@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Exoskeleton Controller</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0c14;
+      --surface:   #111827;
+      --surface2:  #1c2333;
+      --blue:      #3b82f6;
+      --blue-glow: rgba(59,130,246,0.35);
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --orange:    #f97316;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    18px;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px 32px;
+      gap: 18px;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { display: flex; flex-direction: column; }
+    .logo h1 { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.5px; }
+    .logo span { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
+
+    /* ── Connection card ── */
+    .conn-card {
+      width: 100%; max-width: 420px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #1e293b;
+    }
+    .conn-info { display: flex; align-items: center; gap: 10px; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+    .dot.connected   { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+    .dot.advertising { background: var(--orange); box-shadow: 0 0 8px var(--orange); animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    .conn-label { font-size: 0.9rem; font-weight: 500; }
+    .conn-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+
+    #connectBtn {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    #connectBtn:hover  { background: #2563eb; transform: translateY(-1px); }
+    #connectBtn:active { transform: translateY(0); }
+    #connectBtn.disconnect { background: #374151; }
+    #connectBtn.disconnect:hover { background: var(--red); }
+
+    /* ── Stats row ── */
+    .stats {
+      width: 100%; max-width: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      border: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-unit  { font-size: 0.75rem; color: var(--muted); }
+
+    #battValue { color: var(--green); }
+    #battValue.low { color: var(--red); }
+    #battValue.medium { color: var(--orange); }
+    #angleValue { color: var(--blue); }
+
+    /* Battery bar */
+    .batt-bar-bg {
+      height: 4px; border-radius: 2px;
+      background: #1e293b; margin-top: 8px; overflow: hidden;
+    }
+    .batt-bar-fill {
+      height: 100%; border-radius: 2px;
+      background: var(--green);
+      transition: width 0.5s ease, background 0.3s;
+      width: 0%;
+    }
+
+    /* ── Main controls ── */
+    .main-controls {
+      width: 100%; max-width: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .ctrl-btn {
+      border: none;
+      border-radius: var(--radius);
+      padding: 28px 16px;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .ctrl-btn .icon { font-size: 2rem; }
+    .ctrl-btn:active { transform: scale(0.95); }
+    .ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+    #assistBtn {
+      background: linear-gradient(135deg, #1d4ed8, var(--blue));
+      color: #fff;
+      box-shadow: 0 8px 30px var(--blue-glow);
+    }
+    #assistBtn:hover:not(:disabled) { box-shadow: 0 12px 40px rgba(59,130,246,0.5); transform: translateY(-2px); }
+
+    #relaxBtn {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid #2d3748;
+    }
+    #relaxBtn:hover:not(:disabled) { background: #253044; transform: translateY(-2px); }
+
+    /* ── Fine tune ── */
+    .fine-label {
+      width: 100%; max-width: 420px;
+      font-size: 0.75rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .fine-controls {
+      width: 100%; max-width: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .fine-btn {
+      border: 1px solid #2d3748;
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.5rem;
+      font-weight: 700;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.18s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .fine-btn:hover:not(:disabled) { background: var(--surface2); transform: translateY(-1px); }
+    .fine-btn:active { transform: scale(0.95); }
+    .fine-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Log ── */
+    .log-card {
+      width: 100%; max-width: 420px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid #1e293b;
+      overflow: hidden;
+    }
+    .log-header {
+      padding: 10px 16px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #clearLog {
+      background: none; border: none; color: var(--muted);
+      font-family: inherit; font-size: 0.72rem; cursor: pointer;
+      padding: 0;
+    }
+    #clearLog:hover { color: var(--text); }
+    #logContent {
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      font-family: 'Courier New', monospace;
+      color: #94a3b8;
+      max-height: 120px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+    .log-line { padding: 1px 0; }
+    .log-line.ok   { color: var(--green); }
+    .log-line.err  { color: var(--red);   }
+    .log-line.info { color: var(--blue);  }
+
+    /* ── BLE not supported ── */
+    #nobleMsg {
+      display: none;
+      background: #7f1d1d;
+      border: 1px solid var(--red);
+      border-radius: var(--radius);
+      padding: 16px;
+      font-size: 0.85rem;
+      text-align: center;
+      line-height: 1.5;
+      width: 100%; max-width: 420px;
+    }
+
+    /* ── Angle arc visual ── */
+    .arc-wrap {
+      width: 100%; max-width: 420px;
+      display: flex;
+      justify-content: center;
+    }
+    svg.arc { overflow: visible; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <h1>🦿 Exoskeleton</h1>
+      <span>Bluetooth Controller</span>
+    </div>
+  </header>
+
+  <!-- BLE not supported warning -->
+  <div id="nobleMsg">
+    ⚠️ Web Bluetooth is not supported in this browser.<br>
+    Please use <strong>Chrome on Android</strong> or <strong>Chrome on Desktop</strong>.
+  </div>
+
+  <!-- Connection -->
+  <div class="conn-card">
+    <div class="conn-info">
+      <div class="dot" id="dot"></div>
+      <div>
+        <div class="conn-label" id="connLabel">Not Connected</div>
+        <div class="conn-sub"  id="connSub">Press Connect to start</div>
+      </div>
+    </div>
+    <button id="connectBtn" onclick="toggleConnect()">Connect</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Battery</div>
+      <div>
+        <span class="stat-value" id="battValue">--</span>
+        <span class="stat-unit">%</span>
+      </div>
+      <div class="batt-bar-bg"><div class="batt-bar-fill" id="battBar"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Servo Angle</div>
+      <div>
+        <span class="stat-value" id="angleValue">--</span>
+        <span class="stat-unit">°</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Angle arc -->
+  <div class="arc-wrap">
+    <svg class="arc" width="220" height="130" viewBox="0 0 220 130">
+      <path d="M 20 110 A 90 90 0 0 1 200 110"
+            fill="none" stroke="#1e293b" stroke-width="10" stroke-linecap="round"/>
+      <path id="arcFill"
+            d="M 20 110 A 90 90 0 0 1 200 110"
+            fill="none" stroke="#3b82f6" stroke-width="10" stroke-linecap="round"
+            stroke-dasharray="0 283" />
+      <circle id="arcDot" cx="20" cy="110" r="8" fill="#3b82f6"
+              filter="url(#glow)"/>
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <text x="110" y="130" text-anchor="middle" fill="#64748b"
+            font-family="Outfit,sans-serif" font-size="11">0°&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;90°&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;180°</text>
+    </svg>
+  </div>
+
+  <!-- Main controls -->
+  <div class="main-controls">
+    <button class="ctrl-btn" id="assistBtn" onclick="sendCmd('1')" disabled>
+      <span class="icon">🦵</span>
+      ASSIST
+    </button>
+    <button class="ctrl-btn" id="relaxBtn" onclick="sendCmd('0')" disabled>
+      <span class="icon">🛑</span>
+      RELAX
+    </button>
+  </div>
+
+  <!-- Fine tune -->
+  <div class="fine-label">Fine Tune (+/- 10°)</div>
+  <div class="fine-controls">
+    <button class="fine-btn" id="plusBtn"  onclick="sendCmd('+')" disabled>＋</button>
+    <button class="fine-btn" id="minusBtn" onclick="sendCmd('-')" disabled>－</button>
+  </div>
+
+  <!-- Log -->
+  <div class="log-card">
+    <div class="log-header">
+      Activity Log
+      <button id="clearLog" onclick="clearLog()">Clear</button>
+    </div>
+    <div id="logContent"></div>
+  </div>
+
+<script>
+// ── NUS UUIDs (must match firmware) ──
+const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_TX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+let btDevice = null, rxChar = null, txChar = null;
+let connected = false;
+
+// ── BLE support check ──
+if (!navigator.bluetooth) {
+  document.getElementById('nobleMsg').style.display = 'block';
+  document.getElementById('connectBtn').disabled = true;
+}
+
+// ── Connect / Disconnect ──
+async function toggleConnect() {
+  if (connected) {
+    disconnect();
+  } else {
+    await connect();
+  }
+}
+
+async function connect() {
+  try {
+    log('Scanning for Exoskeleton...', 'info');
+    setConnState('scanning');
+
+    btDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'Exoskeleton' }],
+      optionalServices: [NUS_SERVICE]
+    });
+
+    btDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+    log('Connecting…', 'info');
+    const server  = await btDevice.gatt.connect();
+    const service = await server.getPrimaryService(NUS_SERVICE);
+
+    txChar = await service.getCharacteristic(NUS_TX);
+    rxChar = await service.getCharacteristic(NUS_RX);
+
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', onStatusUpdate);
+
+    connected = true;
+    setConnState('connected');
+    log('Connected to Exoskeleton ✓', 'ok');
+    enableButtons(true);
+
+    // Request initial status
+    setTimeout(() => sendCmd('s'), 300);
+
+  } catch (e) {
+    log('Error: ' + e.message, 'err');
+    setConnState('idle');
+  }
+}
+
+function disconnect() {
+  if (btDevice && btDevice.gatt.connected) {
+    btDevice.gatt.disconnect();
+  }
+  onDisconnected();
+}
+
+function onDisconnected() {
+  connected = false;
+  rxChar = null; txChar = null;
+  setConnState('idle');
+  enableButtons(false);
+  log('Disconnected.', 'err');
+  updateStats(null, null);
+}
+
+// ── Send command ──
+async function sendCmd(cmd) {
+  if (!rxChar) return;
+  try {
+    const enc = new TextEncoder();
+    await rxChar.writeValueWithoutResponse(enc.encode(cmd));
+    log('Sent: ' + cmd, 'info');
+  } catch(e) {
+    log('Send error: ' + e.message, 'err');
+  }
+}
+
+// ── Parse status from ESP32 ("ANGLE:90,BAT:75,MODE:MANUAL") ──
+function onStatusUpdate(event) {
+  const raw = new TextDecoder().decode(event.target.value);
+  const parts = {};
+  raw.split(',').forEach(p => {
+    const [k, v] = p.split(':');
+    if (k && v !== undefined) parts[k.trim()] = v.trim();
+  });
+  const angle = parts['ANGLE'] !== undefined ? parseInt(parts['ANGLE']) : null;
+  const bat   = parts['BAT']   !== undefined ? parseInt(parts['BAT'])   : null;
+  updateStats(angle, bat);
+}
+
+function updateStats(angle, bat) {
+  const av = document.getElementById('angleValue');
+  const bv = document.getElementById('battValue');
+  const bb = document.getElementById('battBar');
+
+  if (angle !== null && !isNaN(angle)) {
+    av.textContent = angle;
+    updateArc(angle);
+  } else {
+    av.textContent = '--';
+  }
+
+  if (bat !== null && !isNaN(bat)) {
+    bv.textContent = bat;
+    bb.style.width = bat + '%';
+    bv.className = 'stat-value' + (bat <= 15 ? ' low' : bat <= 40 ? ' medium' : '');
+    bb.style.background = bat <= 15 ? 'var(--red)' : bat <= 40 ? 'var(--orange)' : 'var(--green)';
+  } else {
+    bv.textContent = '--';
+    bb.style.width = '0%';
+  }
+}
+
+// ── Arc animation (0–180°) ──
+function updateArc(angle) {
+  const arcLen  = 283; // approx π * r (r=90)
+  const ratio   = Math.min(Math.max(angle, 0), 180) / 180;
+  const filled  = arcLen * ratio;
+
+  document.getElementById('arcFill').setAttribute(
+    'stroke-dasharray', filled + ' ' + (arcLen - filled));
+
+  // Move dot along arc
+  const cx = 110, cy = 110, r = 90;
+  const rad = Math.PI - ratio * Math.PI;   // π → 0 as angle 0 → 180
+  const dx  = cx + r * Math.cos(rad);
+  const dy  = cy - r * Math.sin(rad);
+  const dot = document.getElementById('arcDot');
+  dot.setAttribute('cx', dx.toFixed(1));
+  dot.setAttribute('cy', dy.toFixed(1));
+}
+
+// ── UI state helpers ──
+function setConnState(state) {
+  const dot   = document.getElementById('dot');
+  const label = document.getElementById('connLabel');
+  const sub   = document.getElementById('connSub');
+  const btn   = document.getElementById('connectBtn');
+
+  dot.className = 'dot';
+  if (state === 'connected') {
+    dot.classList.add('connected');
+    label.textContent = 'Connected';
+    sub.textContent   = btDevice ? btDevice.name : 'Exoskeleton';
+    btn.textContent   = 'Disconnect';
+    btn.className     = 'disconnect';
+  } else if (state === 'scanning') {
+    dot.classList.add('advertising');
+    label.textContent = 'Scanning…';
+    sub.textContent   = 'Looking for Exoskeleton';
+    btn.textContent   = 'Cancel';
+    btn.className     = '';
+  } else {
+    label.textContent = 'Not Connected';
+    sub.textContent   = 'Press Connect to start';
+    btn.textContent   = 'Connect';
+    btn.className     = '';
+  }
+}
+
+function enableButtons(on) {
+  ['assistBtn','relaxBtn','plusBtn','minusBtn'].forEach(id => {
+    document.getElementById(id).disabled = !on;
+  });
+}
+
+// ── Log ──
+function log(msg, type = '') {
+  const div  = document.createElement('div');
+  div.className = 'log-line ' + type;
+  const t   = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  div.textContent = '[' + t + '] ' + msg;
+  const box = document.getElementById('logContent');
+  box.prepend(div);
+  // Keep max 40 lines
+  while (box.children.length > 40) box.removeChild(box.lastChild);
+}
+
+function clearLog() {
+  document.getElementById('logContent').innerHTML = '';
+}
+</script>
+</body>
+</html>
