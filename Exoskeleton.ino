@@ -11,17 +11,17 @@ const int I2C_SDA            = 21;
 const int I2C_SCL            = 22;
 const int BUTTON_PIN         = 4;
 const int RED_LED_BUZZER_PIN = 19;
-const int BLUE_LED_PIN       = 25;  // Manual Mode Indicator
-const int GREEN_LED_PIN      = 26;  // Auto Mode Indicator
-const int BATTERY_PIN        = 34;  // Analog pin for battery voltage divider
+const int BLUE_LED_PIN       = 25;
+const int GREEN_LED_PIN      = 26;
+const int BATTERY_PIN        = 34;
 
 // --- Battery Calibration ---
-float BATTERY_CALIBRATION = 3.0;
+float BATTERY_CALIBRATION = 3.0;  // Confirmed by ADC: pin 2.51V × 3.0 = 7.53V
 
 // --- BLE Nordic UART Service (NUS) UUIDs ---
 #define NUS_SERVICE_UUID  "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-#define NUS_RX_UUID       "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"  // Phone -> ESP32
-#define NUS_TX_UUID       "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"  // ESP32 -> Phone
+#define NUS_RX_UUID       "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_TX_UUID       "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 BLEServer*         pServer          = nullptr;
 BLECharacteristic* pTxCharacteristic = nullptr;
@@ -55,7 +55,7 @@ const float TILT_DOWN_THRESHOLD = 28.0;
 void beep(int duration);
 void updateModeLEDs();
 void sendBLEStatus();
-void handleBLECommand(char cmd);
+void handleBLECommand(String cmd);
 
 // =========================================================
 // BLE Callbacks
@@ -70,7 +70,7 @@ class MyServerCallbacks : public BLEServerCallbacks {
     bleConnected = false;
     Serial.println("BLE: Phone disconnected.");
     if (bleAdvertising) {
-      BLEDevice::startAdvertising(); // Restart so phone can reconnect
+      BLEDevice::startAdvertising();
     }
   }
 };
@@ -79,7 +79,7 @@ class MyRxCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pChar) override {
     String val = String(pChar->getValue().c_str());
     if (val.length() > 0) {
-      handleBLECommand(val[0]);
+      handleBLECommand(val);
     }
   }
 };
@@ -136,7 +136,7 @@ void setup() {
   }
   Serial.println("MPU6050 Initialized!");
 
-  // --- BLE Init (done once; advertising starts only in Manual Mode) ---
+  // --- BLE Init ---
   BLEDevice::init("Exoskeleton");
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -157,10 +157,9 @@ void setup() {
   BLEAdvertising* pAdv = BLEDevice::getAdvertising();
   pAdv->addServiceUUID(NUS_SERVICE_UUID);
   pAdv->setScanResponse(true);
-  // Do NOT start advertising here — only when entering Manual Mode
 
   delay(100);
-  beep(200); // Startup beep
+  beep(200);
 
   // Button wiring check
   if (digitalRead(BUTTON_PIN) == LOW) {
@@ -202,16 +201,20 @@ void checkBattery() {
   float pinVoltage    = (rawADC / 4095.0) * 3.3;
   float batteryVoltage = pinVoltage * BATTERY_CALIBRATION;
 
-  int batteryPercent = (batteryVoltage - 5.0) / (8.4 - 5.0) * 100;
+  // DEBUG: Print raw ADC so you can calibrate
+  Serial.print("RAW ADC: "); Serial.print(rawADC);
+  Serial.print(" | Pin V: "); Serial.println(pinVoltage);
+
+  int batteryPercent = (batteryVoltage - 6.0) / (8.4 - 6.0) * 100;
   if (batteryPercent > 100) batteryPercent = 100;
   if (batteryPercent < 0)   batteryPercent = 0;
 
   Serial.print("Battery: "); Serial.print(batteryVoltage);
   Serial.print("V ("); Serial.print(batteryPercent); Serial.println("%)");
 
-  // Alarm: below 4.0V (but > 0.5V to ignore floating pin)
-  if (batteryVoltage < 4.0 && batteryVoltage > 0.5) {
-    Serial.println("LOW BATTERY ALARM! (Below 4.0V)");
+  // Alarm: below 6.5V but above 4.5V (ignores no-battery / USB-only parasitic voltage which reads ~4.3V)
+  if (batteryVoltage < 6.5 && batteryVoltage > 4.5) {
+    Serial.println("LOW BATTERY ALARM!");
     beep(500); delay(200); beep(500);
   }
 
@@ -220,48 +223,59 @@ void checkBattery() {
 }
 
 // =========================================================
-// BLE COMMAND HANDLER
+// BLE COMMAND HANDLER (now accepts full string for direct angle)
 // =========================================================
-void handleBLECommand(char cmd) {
-  if (currentMode != MANUAL_MODE) return; // Safety: ignore if not in manual
+void handleBLECommand(String cmd) {
+  if (currentMode != MANUAL_MODE) return;
 
   int targetAngle = (currentServoAngle < 0) ? servoRelaxedAngle : currentServoAngle;
 
-  switch (cmd) {
-    case '1':  // ASSIST position
-      targetAngle     = servoAssistAngle;
-      manualServoActive = true;
-      Serial.println("BLE CMD: ASSIST");
-      break;
-    case '0':  // RELAX position
-      targetAngle     = servoRelaxedAngle;
-      manualServoActive = false;
-      Serial.println("BLE CMD: RELAX");
-      break;
-    case '+':  // Fine +10 degrees
-      targetAngle = min(targetAngle + 10, 180);
-      Serial.print("BLE CMD: +10 -> "); Serial.println(targetAngle);
-      break;
-    case '-':  // Fine -10 degrees
-      targetAngle = max(targetAngle - 10, 0);
-      Serial.print("BLE CMD: -10 -> "); Serial.println(targetAngle);
-      break;
-    case 's':  // Status request only
-      sendBLEStatus();
-      return;
-    default:
-      return;
+  char first = cmd[0];
+
+  // Direct angle command: "A90", "A120", etc.
+  if (first == 'A' && cmd.length() > 1) {
+    int angle = cmd.substring(1).toInt();
+    targetAngle = constrain(angle, 0, 180);
+    manualServoActive = (targetAngle > 0);
+    Serial.print("BLE CMD: ANGLE -> "); Serial.println(targetAngle);
+  }
+  else {
+    switch (first) {
+      case '1':
+        targetAngle     = servoAssistAngle;
+        manualServoActive = true;
+        Serial.println("BLE CMD: ASSIST");
+        break;
+      case '0':
+        targetAngle     = servoRelaxedAngle;
+        manualServoActive = false;
+        Serial.println("BLE CMD: RELAX");
+        break;
+      case '+':
+        targetAngle = min(targetAngle + 10, 180);
+        Serial.print("BLE CMD: +10 -> "); Serial.println(targetAngle);
+        break;
+      case '-':
+        targetAngle = max(targetAngle - 10, 0);
+        Serial.print("BLE CMD: -10 -> "); Serial.println(targetAngle);
+        break;
+      case 's':
+        sendBLEStatus();
+        return;
+      default:
+        return;
+    }
   }
 
   if (targetAngle != currentServoAngle) {
     kneeServo.write(targetAngle);
     currentServoAngle = targetAngle;
   }
-  sendBLEStatus(); // Always confirm back to phone
+  sendBLEStatus();
 }
 
 // =========================================================
-// BLE STATUS SENDER  (format: "ANGLE:90,BAT:75,MODE:MANUAL")
+// BLE STATUS SENDER  (format: "ANGLE:90,BAT:75,VOLT:7.4,MODE:MANUAL")
 // =========================================================
 void sendBLEStatus() {
   if (!bleConnected || pTxCharacteristic == nullptr) return;
@@ -269,7 +283,7 @@ void sendBLEStatus() {
   int rawADC = analogRead(BATTERY_PIN);
   float pinVoltage     = (rawADC / 4095.0) * 3.3;
   float batteryVoltage = pinVoltage * BATTERY_CALIBRATION;
-  int batteryPercent   = (batteryVoltage - 5.0) / (8.4 - 5.0) * 100;
+  int batteryPercent   = (batteryVoltage - 6.0) / (8.4 - 6.0) * 100;
   if (batteryPercent > 100) batteryPercent = 100;
   if (batteryPercent < 0)   batteryPercent = 0;
 
@@ -278,6 +292,7 @@ void sendBLEStatus() {
 
   String status = "ANGLE:" + String(angle) +
                   ",BAT:"  + String(batteryPercent) +
+                  ",VOLT:" + String(batteryVoltage, 1) +
                   ",MODE:" + mode;
 
   pTxCharacteristic->setValue(status.c_str());
@@ -311,7 +326,6 @@ void handleButton() {
         Serial.println("Button Pressed!");
       } else {
         if (buttonPressed && !longPressHandled) {
-          // Short press: toggle servo in Manual mode
           Serial.println("Short Press!");
           if (currentMode == MANUAL_MODE) {
             manualServoActive = !manualServoActive;
@@ -378,7 +392,7 @@ void handleAutoMode() {
 }
 
 // =========================================================
-// MANUAL MODE  (BLE callbacks handle commands; button is fallback)
+// MANUAL MODE
 // =========================================================
 void handleManualMode() {
   // Commands arrive via BLE callbacks (non-blocking)
@@ -390,19 +404,16 @@ void handleManualMode() {
 // =========================================================
 void switchMode() {
   if (currentMode == AUTO_MODE) {
-    // --- Switch to MANUAL ---
     currentMode       = MANUAL_MODE;
     manualServoActive = false;
     kneeServo.write(servoRelaxedAngle);
     currentServoAngle = servoRelaxedAngle;
 
-    // Start BLE advertising
     bleAdvertising = true;
     BLEDevice::startAdvertising();
     Serial.println("BLE: Advertising as 'Exoskeleton'. Open the controller app!");
 
   } else {
-    // --- Switch to AUTO ---
     currentMode    = AUTO_MODE;
     bleAdvertising = false;
     bleConnected   = false;
