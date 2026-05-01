@@ -46,10 +46,13 @@ const unsigned long DEBOUNCE_TIME   = 50;
 int servoRelaxedAngle  = 0;
 int servoAssistAngle   = 90;
 bool manualServoActive = false;
-int currentServoAngle  = -1;
+int currentServoAngle  = 0;
+int targetServoAngle   = 0;
 
-const float TILT_UP_THRESHOLD   = 32.0;
-const float TILT_DOWN_THRESHOLD = 28.0;
+int servoSpeedDelay     = 10;   // ms per degree (lower = faster)
+float currentPitch      = 0.0;
+float tiltUpThreshold   = 32.0;
+float tiltDownThreshold = 28.0;
 
 // --- Forward Declarations ---
 void beep(int duration);
@@ -105,7 +108,7 @@ void setup() {
   ESP32PWM::allocateTimer(3);
   kneeServo.setPeriodHertz(50);
   kneeServo.attach(SERVO_PIN, 500, 2400);
-  kneeServo.write(servoRelaxedAngle);
+  kneeServo.write(currentServoAngle);
 
   // MPU6050 I2C scan
   Wire.begin(I2C_SDA, I2C_SCL);
@@ -186,7 +189,31 @@ void loop() {
     handleManualMode();
   }
 
-  delay(20);
+  updateServo();
+
+  delay(10);
+}
+
+// =========================================================
+// SERVO UPDATER (Non-blocking Sweep)
+// =========================================================
+void updateServo() {
+  if (currentServoAngle == targetServoAngle) return;
+
+  if (servoSpeedDelay <= 0) {
+    // Instant snap
+    currentServoAngle = targetServoAngle;
+    kneeServo.write(currentServoAngle);
+    return;
+  }
+
+  static unsigned long lastMove = 0;
+  if (millis() - lastMove >= servoSpeedDelay) {
+    lastMove = millis();
+    if (currentServoAngle < targetServoAngle) currentServoAngle++;
+    else currentServoAngle--;
+    kneeServo.write(currentServoAngle);
+  }
 }
 
 // =========================================================
@@ -228,7 +255,7 @@ void checkBattery() {
 void handleBLECommand(String cmd) {
   if (currentMode != MANUAL_MODE) return;
 
-  int targetAngle = (currentServoAngle < 0) ? servoRelaxedAngle : currentServoAngle;
+  int targetAngle = targetServoAngle;
 
   char first = cmd[0];
 
@@ -238,6 +265,22 @@ void handleBLECommand(String cmd) {
     targetAngle = constrain(angle, 0, 180);
     manualServoActive = (targetAngle > 0);
     Serial.print("BLE CMD: ANGLE -> "); Serial.println(targetAngle);
+  }
+  // Speed control command: "V10"
+  else if (first == 'V' && cmd.length() > 1) {
+    servoSpeedDelay = constrain(cmd.substring(1).toInt(), 0, 100);
+    Serial.print("BLE CMD: SPEED -> "); Serial.println(servoSpeedDelay);
+    sendBLEStatus();
+    return;
+  }
+  // Threshold command: "T25"
+  else if (first == 'T' && cmd.length() > 1) {
+    int val = cmd.substring(1).toInt();
+    tiltUpThreshold = constrain(val, 5, 80);
+    tiltDownThreshold = tiltUpThreshold - 4.0;
+    Serial.print("BLE CMD: THRESHOLD -> "); Serial.println(tiltUpThreshold);
+    sendBLEStatus();
+    return;
   }
   else {
     switch (first) {
@@ -267,15 +310,14 @@ void handleBLECommand(String cmd) {
     }
   }
 
-  if (targetAngle != currentServoAngle) {
-    kneeServo.write(targetAngle);
-    currentServoAngle = targetAngle;
+  if (targetAngle != targetServoAngle) {
+    targetServoAngle = targetAngle;
   }
   sendBLEStatus();
 }
 
 // =========================================================
-// BLE STATUS SENDER  (format: "ANGLE:90,BAT:75,VOLT:7.4,MODE:MANUAL")
+// BLE STATUS SENDER
 // =========================================================
 void sendBLEStatus() {
   if (!bleConnected || pTxCharacteristic == nullptr) return;
@@ -287,13 +329,13 @@ void sendBLEStatus() {
   if (batteryPercent > 100) batteryPercent = 100;
   if (batteryPercent < 0)   batteryPercent = 0;
 
-  int angle = (currentServoAngle < 0) ? 0 : currentServoAngle;
   String mode = (currentMode == MANUAL_MODE) ? "MANUAL" : "AUTO";
 
-  String status = "ANGLE:" + String(angle) +
+  String status = "ANGLE:" + String(targetServoAngle) +
                   ",BAT:"  + String(batteryPercent) +
                   ",VOLT:" + String(batteryVoltage, 1) +
-                  ",MODE:" + mode;
+                  ",MODE:" + mode +
+                  ",PITCH:" + String(currentPitch, 1);
 
   pTxCharacteristic->setValue(status.c_str());
   pTxCharacteristic->notify();
@@ -330,9 +372,8 @@ void handleButton() {
           if (currentMode == MANUAL_MODE) {
             manualServoActive = !manualServoActive;
             int targetAngle = manualServoActive ? servoAssistAngle : servoRelaxedAngle;
-            if (targetAngle != currentServoAngle) {
-              kneeServo.write(targetAngle);
-              currentServoAngle = targetAngle;
+            if (targetAngle != targetServoAngle) {
+              targetServoAngle = targetAngle;
             }
             if (bleConnected) sendBLEStatus();
           }
@@ -371,23 +412,24 @@ void handleAutoMode() {
 
   float pitch = atan2((float)AcX,
                       sqrt((float)AcY * AcY + (float)AcZ * AcZ)) * 180.0 / PI;
+  currentPitch = pitch; // Update global for BLE
 
   static unsigned long lastPrint = 0;
   if (millis() - lastPrint > 500) {
-    Serial.print("Pitch: "); Serial.println(pitch);
+    // Send telemetry to phone constantly when in Auto mode
+    if (bleConnected) sendBLEStatus();
     lastPrint = millis();
   }
 
   float absPitch    = abs(pitch);
-  int   targetAngle = currentServoAngle;
+  int   targetAngle = targetServoAngle;
 
-  if      (absPitch > TILT_UP_THRESHOLD)   targetAngle = servoAssistAngle;
-  else if (absPitch < TILT_DOWN_THRESHOLD) targetAngle = servoRelaxedAngle;
+  if      (absPitch > tiltUpThreshold)   targetAngle = servoAssistAngle;
+  else if (absPitch < tiltDownThreshold) targetAngle = servoRelaxedAngle;
 
-  if (targetAngle != currentServoAngle) {
-    kneeServo.write(targetAngle);
-    currentServoAngle = targetAngle;
-    Serial.print("Auto -> "); Serial.println(targetAngle);
+  if (targetAngle != targetServoAngle) {
+    targetServoAngle = targetAngle;
+    Serial.print("Auto Target -> "); Serial.println(targetAngle);
   }
 }
 
@@ -406,8 +448,7 @@ void switchMode() {
   if (currentMode == AUTO_MODE) {
     currentMode       = MANUAL_MODE;
     manualServoActive = false;
-    kneeServo.write(servoRelaxedAngle);
-    currentServoAngle = servoRelaxedAngle;
+    targetServoAngle  = servoRelaxedAngle;
 
     bleAdvertising = true;
     BLEDevice::startAdvertising();
