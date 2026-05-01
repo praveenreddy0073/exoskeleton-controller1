@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>Exoskeleton Controller</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0a0c14;--surface:#111827;--surface2:#1c2333;--blue:#3b82f6;--blue-glow:rgba(59,130,246,0.35);--green:#22c55e;--red:#ef4444;--orange:#f97316;--cyan:#06b6d4;--purple:#a855f7;--text:#e2e8f0;--muted:#64748b;--radius:18px}
@@ -180,6 +181,37 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
     </div>
   </div>
 
+  <div class="slider-section">
+    <div class="section-label">Servo Movement Speed (ms/deg)</div>
+    <div class="slider-wrap">
+      <div class="slider-row">
+        <span style="font-size:.75rem;color:var(--muted)">Fast</span>
+        <input type="range" id="speedSlider" min="0" max="100" value="10" disabled oninput="document.getElementById('speedVal').textContent=this.value" onchange="sendCmd('V'+this.value)"/>
+        <span style="font-size:.75rem;color:var(--muted)">Slow</span>
+        <span class="slider-val" id="speedVal">10</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="slider-section">
+    <div class="section-label">Auto-Assist Sensitivity (Threshold)</div>
+    <div class="slider-wrap">
+      <div class="slider-row">
+        <span style="font-size:.75rem;color:var(--muted)">5°</span>
+        <input type="range" id="threshSlider" min="5" max="80" value="32" disabled oninput="document.getElementById('threshVal').textContent=this.value+'°'" onchange="sendCmd('T'+this.value)"/>
+        <span style="font-size:.75rem;color:var(--muted)">80°</span>
+        <span class="slider-val" id="threshVal">32°</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-card">
+    <div class="log-header">Live Telemetry (Pitch)</div>
+    <div style="padding:10px; height:150px; width:100%; box-sizing:border-box;">
+      <canvas id="pitchChart"></canvas>
+    </div>
+  </div>
+
   <div class="log-card">
     <div class="log-header">
       Activity Log
@@ -303,14 +335,19 @@ function onStatusUpdate(event){
   const angle=parts['ANGLE']!==undefined?parseInt(parts['ANGLE']):null;
   const bat=parts['BAT']!==undefined?parseInt(parts['BAT']):null;
   const volt=parts['VOLT']!==undefined?parseFloat(parts['VOLT']):null;
+  const pitch=parts['PITCH']!==undefined?parseFloat(parts['PITCH']):null;
   const mode=parts['MODE']||null;
-  updateStats(angle,bat,volt,mode);
+  updateStats(angle,bat,volt,mode,pitch);
 }
 
-function updateStats(angle,bat,volt,mode){
+function updateStats(angle,bat,volt,mode,pitch){
   const av=document.getElementById('angleValue'),bv=document.getElementById('battValue');
   const bb=document.getElementById('battBar'),vv=document.getElementById('voltValue');
   const mb=document.getElementById('modeBadge');
+
+  if(pitch!==null&&!isNaN(pitch)){
+    updateChart(pitch);
+  }
 
   if(angle!==null&&!isNaN(angle)){
     av.textContent=angle;updateArc(angle);
@@ -359,7 +396,7 @@ function setConnState(state){
 }
 
 function enableButtons(on){
-  ['assistBtn','relaxBtn','plusBtn','minusBtn','angleSlider','presetWalk','presetSit','presetStand'].forEach(id=>{
+  ['assistBtn','relaxBtn','plusBtn','minusBtn','angleSlider','presetWalk','presetSit','presetStand','speedSlider','threshSlider'].forEach(id=>{
     document.getElementById(id).disabled=!on;
   });
   if(!on){
@@ -404,8 +441,50 @@ function exportLog(){
   a.download='exoskeleton_log_'+new Date().toISOString().slice(0,10)+'.txt';
   a.click();URL.revokeObjectURL(a.href);
 }
+
+// Chart Logic
+let pitchChart=null;
+const chartData=[],chartLabels=[];
+function initChart(){
+  const ctx=document.getElementById('pitchChart').getContext('2d');
+  pitchChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:chartLabels,
+      datasets:[{
+        label:'Pitch Angle',
+        data:chartData,
+        borderColor:'#3b82f6',
+        backgroundColor:'rgba(59,130,246,0.1)',
+        borderWidth:2,
+        fill:true,
+        pointRadius:0,
+        tension:0.3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false,
+      scales:{
+        y:{min:-90,max:90,grid:{color:'#1e293b'}},
+        x:{display:false}
+      },
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+function updateChart(pitch){
+  if(!pitchChart)return;
+  chartLabels.push('');
+  chartData.push(pitch);
+  if(chartData.length>40){chartData.shift();chartLabels.shift()}
+  pitchChart.update();
+}
+
+window.onload=()=>{
+  initChart();
+};
 </script>
 </body>
 </html>
-
-
