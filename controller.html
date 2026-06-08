@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#0a0c14"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>Exoskeleton Controller</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0c14;--surface:#111827;--surface2:#1c2333;--blue:#3b82f6;--blue-glow:rgba(59,130,246,0.35);--green:#22c55e;--red:#ef4444;--orange:#f97316;--cyan:#06b6d4;--purple:#a855f7;--text:#e2e8f0;--muted:#64748b;--radius:18px}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 32px;gap:14px}
+header{width:100%;max-width:420px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;flex-direction:column}
+.logo h1{font-size:1.4rem;font-weight:800;letter-spacing:-0.5px}
+.logo span{font-size:.75rem;color:var(--muted);font-weight:400}
+.mode-badge{font-size:.7rem;font-weight:700;padding:5px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.08em;transition:all .3s}
+.mode-badge.auto{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.mode-badge.manual{background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)}
+.conn-card{width:100%;max-width:420px;background:var(--surface);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border:1px solid #1e293b}
+.conn-info{display:flex;align-items:center;gap:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);transition:background .3s}
+.dot.connected{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+.dot.advertising{background:var(--orange);box-shadow:0 0 8px var(--orange);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.conn-label{font-size:.9rem;font-weight:500}
+.conn-sub{font-size:.72rem;color:var(--muted);margin-top:1px}
+.session-timer{font-size:.65rem;color:var(--cyan);font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+#connectBtn{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+#connectBtn:hover{background:#2563eb;transform:translateY(-1px)}
+#connectBtn:active{transform:translateY(0)}
+#connectBtn.disconnect{background:#374151}
+#connectBtn.disconnect:hover{background:var(--red)}
+.stats{width:100%;max-width:420px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:14px;border:1px solid #1e293b;display:flex;flex-direction:column;gap:3px}
+.stat-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat-value{font-size:1.6rem;font-weight:700;line-height:1}
+.stat-unit{font-size:.7rem;color:var(--muted)}
+#battValue{color:var(--green)}
+#battValue.low{color:var(--red)}
+#battValue.medium{color:var(--orange)}
+#angleValue{color:var(--blue)}
+#voltValue{color:var(--cyan)}
+.batt-bar-bg{height:4px;border-radius:2px;background:#1e293b;margin-top:6px;overflow:hidden}
+.batt-bar-fill{height:100%;border-radius:2px;background:var(--green);transition:width .5s ease,background .3s;width:0%}
+.main-controls{width:100%;max-width:420px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ctrl-btn{border:none;border-radius:var(--radius);padding:24px 16px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;user-select:none;position:relative;overflow:hidden}
+.ctrl-btn .icon{font-size:1.8rem}
+.ctrl-btn:active{transform:scale(.95)}
+.ctrl-btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+#assistBtn{background:linear-gradient(135deg,#1d4ed8,var(--blue));color:#fff;box-shadow:0 8px 30px var(--blue-glow)}
+#assistBtn:hover:not(:disabled){box-shadow:0 12px 40px rgba(59,130,246,.5);transform:translateY(-2px)}
+#assistBtn.active-glow{box-shadow:0 0 30px rgba(59,130,246,.7),0 0 60px rgba(59,130,246,.3);animation:glowPulse 1.5s infinite}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 30px rgba(59,130,246,.7),0 0 60px rgba(59,130,246,.3)}50%{box-shadow:0 0 40px rgba(59,130,246,.9),0 0 80px rgba(59,130,246,.5)}}
+#relaxBtn{background:var(--surface2);color:var(--text);border:1px solid #2d3748}
+#relaxBtn:hover:not(:disabled){background:#253044;transform:translateY(-2px)}
+#relaxBtn.active-glow{box-shadow:0 0 25px rgba(100,116,139,.5);border-color:var(--muted)}
+.arc-wrap{width:100%;max-width:420px;display:flex;justify-content:center}
+svg.arc{overflow:visible}
+.slider-section{width:100%;max-width:420px}
+.section-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.slider-wrap{background:var(--surface);border-radius:14px;padding:16px 18px;border:1px solid #1e293b}
+.slider-row{display:flex;align-items:center;gap:12px}
+.slider-val{font-size:1.1rem;font-weight:700;color:var(--blue);min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:#1e293b;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 10px var(--blue-glow)}
+.fine-controls{width:100%;max-width:420px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fine-btn{border:1px solid #2d3748;border-radius:14px;background:var(--surface);color:var(--text);font-family:inherit;font-size:1.5rem;font-weight:700;padding:14px;cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent;user-select:none}
+.fine-btn:hover:not(:disabled){background:var(--surface2);transform:translateY(-1px)}
+.fine-btn:active{transform:scale(.95)}
+.fine-btn:disabled{opacity:.35;cursor:not-allowed}
+.presets{width:100%;max-width:420px}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.preset-btn{background:var(--surface);border:1px solid #2d3748;border-radius:14px;padding:14px 8px;font-family:inherit;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:4px;-webkit-tap-highlight-color:transparent}
+.preset-btn:hover:not(:disabled){background:var(--surface2);transform:translateY(-1px);border-color:var(--purple)}
+.preset-btn:active{transform:scale(.95)}
+.preset-btn:disabled{opacity:.35;cursor:not-allowed}
+.preset-icon{font-size:1.3rem}
+.preset-name{font-size:.75rem;font-weight:600;color:var(--text)}
+.preset-angle{font-size:.65rem;color:var(--purple);font-weight:500}
+.log-card{width:100%;max-width:420px;background:var(--surface);border-radius:var(--radius);border:1px solid #1e293b;overflow:hidden}
+.log-header{padding:10px 16px;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.log-actions{display:flex;gap:8px}
+.log-action-btn{background:none;border:none;color:var(--muted);font-family:inherit;font-size:.72rem;cursor:pointer;padding:0}
+.log-action-btn:hover{color:var(--text)}
+#logContent{padding:10px 16px;font-size:.76rem;font-family:'Courier New',monospace;color:#94a3b8;max-height:120px;overflow-y:auto;display:flex;flex-direction:column-reverse}
+.log-line{padding:1px 0}
+.log-line.ok{color:var(--green)}
+.log-line.err{color:var(--red)}
+.log-line.info{color:var(--blue)}
+#nobleMsg{display:none;background:#7f1d1d;border:1px solid var(--red);border-radius:var(--radius);padding:16px;font-size:.85rem;text-align:center;line-height:1.5;width:100%;max-width:420px}
+/* Authentication & Modals */
+#lockScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;transition:opacity 0.4s}
+.lock-card{background:var(--surface);padding:30px 20px;border-radius:var(--radius);border:1px solid #1e293b;width:100%;max-width:340px;display:flex;flex-direction:column;gap:15px;align-items:center;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
+.lock-input{width:100%;background:#0f172a;border:1px solid #334155;color:var(--text);padding:12px;border-radius:10px;font-family:inherit;font-size:1rem;text-align:center;outline:none}
+.lock-input:focus{border-color:var(--blue);box-shadow:0 0 10px var(--blue-glow)}
+.lock-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:10px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.lock-btn:hover{background:#2563eb}
+.biometric-btn{width:100%;background:var(--surface2);color:var(--text);border:1px solid #334155;padding:12px;border-radius:10px;font-family:inherit;font-size:0.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s}
+.biometric-btn:hover{background:#253044}
+
+/* Settings Modal */
+#settingsModal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,12,20,0.8);backdrop-filter:blur(5px);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity 0.3s}
+#settingsModal.show{display:flex;opacity:1}
+.settings-content{background:var(--surface);width:100%;max-width:360px;border-radius:var(--radius);border:1px solid #1e293b;padding:20px;display:flex;flex-direction:column;gap:15px}
+.settings-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e293b;padding-bottom:10px;margin-bottom:5px}
+.settings-header h2{font-size:1.1rem;font-weight:700}
+.close-btn{background:none;border:none;color:var(--muted);font-size:1.5rem;cursor:pointer}
+.close-btn:hover{color:var(--text)}
+
+/* Theme Dots */
+.theme-row{display:flex;gap:10px;justify-content:center;padding:10px 0}
+.theme-dot{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all 0.2s}
+.theme-dot.active{border-color:white;transform:scale(1.1)}
+.theme-blue{background:#3b82f6}
+.theme-purple{background:#a855f7}
+.theme-green{background:#22c55e}
+.theme-orange{background:#f97316}
+
+/* Voice Toggle Switch */
+.voice-switch{position:relative;display:inline-block;width:44px;height:24px}
+.voice-switch input{opacity:0;width:0;height:0}
+.voice-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--surface);border:1px solid #1e293b;transition:.3s;border-radius:24px;display:flex;align-items:center}
+.voice-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background-color:var(--muted);transition:.3s;border-radius:50%}
+.voice-switch input:checked + .voice-slider{background-color:rgba(239,68,68,0.15);border-color:var(--red);box-shadow:0 0 8px rgba(239,68,68,0.3)}
+.voice-switch input:checked + .voice-slider:before{transform:translateX(20px);background-color:var(--red)}
+
+/* Header Buttons */
+.header-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{background:var(--surface);border:1px solid #1e293b;color:var(--text);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;transition:all 0.2s}
+  .icon-btn:hover{background:var(--surface2)}
+  /* SOS Button */
+  .sos-btn { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background: var(--red); color: white; border: none; border-radius: 50%; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); z-index: 8000; transition: all 0.3s; }
+  .sos-btn:active { transform: scale(0.9); }
+  .sos-btn::after { content: "SOS"; position: absolute; bottom: -20px; font-size: 0.7rem; font-weight: 800; color: var(--red); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <h1>🦿 Exoskeleton</h1>
+      <span>Bluetooth Controller</span>
+    </div>
+    <div class="header-actions">
+      <label class="voice-switch" title="Continuous Voice Control">
+        <input type="checkbox" id="voiceToggle" onchange="toggleVoiceSwitch(this.checked)">
+        <span class="voice-slider"><span style="font-size:10px; margin-left:24px; margin-top:2px; opacity:0.7;">🎤</span></span>
+      </label>
+      <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
+      <div class="mode-badge auto" id="modeBadge" style="margin-left:4px; cursor:pointer;" onclick="toggleMode()" title="Click to toggle Mode">AUTO</div>
+    </div>
+  </header>
+
+  <div id="nobleMsg">⚠️ Web Bluetooth is not supported in this browser.<br>Please use <strong>Chrome on Android</strong> or <strong>Chrome on Desktop</strong>.</div>
+
+  <!-- Lock Screen -->
+  <div id="lockScreen">
+    <div class="lock-card">
+      <div style="font-size:2.5rem; margin-bottom:5px;">🔒</div>
+      <h2>App Locked</h2>
+      <p style="font-size:0.8rem; color:var(--muted); margin-bottom:10px;">Enter password or use fingerprint</p>
+      
+      <input type="password" id="passInput" class="lock-input" placeholder="Enter Password" onkeypress="if(event.key==='Enter') login()"/>
+      <p id="loginError" style="color:var(--red); font-size:0.75rem; display:none;">Incorrect password</p>
+      
+      <button class="lock-btn" onclick="login()">Unlock</button>
+      
+      <button class="biometric-btn" id="bioLoginBtn" onclick="biometricLogin()" style="display:none;">
+        <span>🖐️</span> Use Fingerprint
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal">
+    <div class="settings-content">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button class="close-btn" onclick="closeSettings()">&times;</button>
+      </div>
+      
+      <div style="font-size:0.85rem; font-weight:600; margin-top:5px;">Theme Color</div>
+      <div class="theme-row">
+        <div class="theme-dot theme-blue active" onclick="setTheme('blue', '#3b82f6', 'rgba(59,130,246,0.35)')"></div>
+        <div class="theme-dot theme-purple" onclick="setTheme('purple', '#a855f7', 'rgba(168,85,247,0.35)')"></div>
+        <div class="theme-dot theme-green" onclick="setTheme('green', '#22c55e', 'rgba(34,197,94,0.35)')"></div>
+        <div class="theme-dot theme-orange" onclick="setTheme('orange', '#f97316', 'rgba(249,115,22,0.35)')"></div>
+      </div>
+      
+      <div style="font-size:0.85rem; font-weight:600; margin-top:10px;">Voice Language</div>
+      <select id="langSelect" class="lock-input" style="padding:8px;" onchange="changeLanguage()">
+        <option value="en-IN">English (India)</option>
+        <option value="hi-IN">हिंदी (Hindi)</option>
+        <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+        <option value="te-IN">తెలుగు (Telugu)</option>
+      </select>
+      
+      <div style="font-size:0.85rem; font-weight:600; margin-top:10px;">Preferences</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:5px;">
+        <span style="font-size:0.85rem;">Voice Feedback (Talk Back)</span>
+        <label class="voice-switch" style="width:36px; height:20px;">
+          <input type="checkbox" id="voiceFeedbackToggle" onchange="toggleFeedback(this.checked)">
+          <span class="voice-slider" style="border-radius:20px;"></span>
+        </label>
+      </div>
+
+      <div style="font-size:0.85rem; font-weight:600; margin-top:10px;">Security</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:5px;">
+        <input type="password" id="newPassInput" class="lock-input" placeholder="New Password"/>
+        <button class="biometric-btn" onclick="changePassword()">Change Password</button>
+        <button class="biometric-btn" id="bioRegBtn" onclick="registerBiometric()" style="border-color:var(--blue); color:var(--blue);">
+          <span>➕</span> Register Fingerprint
+        </button>
+      </div>
+
+      <div style="font-size:0.85rem; font-weight:600; margin-top:10px;">Emergency Contact</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:5px;">
+        <input type="tel" id="emergencyPhone" class="lock-input" placeholder="Phone Number (with country code)"/>
+        <button class="biometric-btn" onclick="saveEmergencyContact()">Save Contact</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="conn-card">
+    <div class="conn-info">
+      <div class="dot" id="dot"></div>
+      <div>
+        <div class="conn-label" id="connLabel">Not Connected</div>
+        <div class="conn-sub" id="connSub">Press Connect to start</div>
+        <div class="session-timer" id="sessionTimer" style="display:none">⏱ 00:00:00</div>
+      </div>
+    </div>
+    <button id="connectBtn" onclick="toggleConnect()">Connect</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Battery</div>
+      <div><span class="stat-value" id="battValue">--</span><span class="stat-unit">%</span></div>
+      <div class="batt-bar-bg"><div class="batt-bar-fill" id="battBar"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Angle</div>
+      <div><span class="stat-value" id="angleValue">--</span><span class="stat-unit">°</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Voltage</div>
+      <div><span class="stat-value" id="voltValue">--</span><span class="stat-unit">V</span></div>
+    </div>
+  </div>
+
+  <div class="arc-wrap">
+    <svg class="arc" width="220" height="130" viewBox="0 0 220 130">
+      <path d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="#1e293b" stroke-width="10" stroke-linecap="round"/>
+      <path id="arcFill" d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="#3b82f6" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 283"/>
+      <circle id="arcDot" cx="20" cy="110" r="8" fill="#3b82f6" filter="url(#glow)"/>
+      <defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <text x="110" y="130" text-anchor="middle" fill="#64748b" font-family="Outfit,sans-serif" font-size="11">0°&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;90°&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;180°</text>
+    </svg>
+  </div>
+
+  <div class="main-controls">
+    <button class="ctrl-btn" id="assistBtn" onclick="sendCmd('1')" disabled><span class="icon">🦵</span>ASSIST</button>
+    <button class="ctrl-btn" id="relaxBtn" onclick="sendCmd('0')" disabled><span class="icon">🛑</span>RELAX</button>
+  </div>
+
+  <button class="sos-btn" onclick="sendSOS()" title="Emergency SOS">🚨</button>
+
+  <div class="slider-section">
+    <div class="section-label">Direct Angle Control</div>
+    <div class="slider-wrap">
+      <div class="slider-row">
+        <span style="font-size:.75rem;color:var(--muted)">0°</span>
+        <input type="range" id="angleSlider" min="0" max="180" value="0" disabled oninput="onSlider(this.value)"/>
+        <span style="font-size:.75rem;color:var(--muted)">180°</span>
+        <span class="slider-val" id="sliderVal">0°</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="width:100%;max-width:420px">Fine Tune (±10°)</div>
+  <div class="fine-controls">
+    <button class="fine-btn" id="plusBtn" onclick="sendCmd('+')" disabled>＋</button>
+    <button class="fine-btn" id="minusBtn" onclick="sendCmd('-')" disabled>－</button>
+  </div>
+
+  <div class="presets">
+    <div class="section-label">Quick Presets</div>
+    <div class="preset-grid">
+      <button class="preset-btn" id="presetWalk" onclick="sendPreset(45)" disabled>
+        <span class="preset-icon">🚶</span><span class="preset-name">Walk</span><span class="preset-angle">45°</span>
+      </button>
+      <button class="preset-btn" id="presetSit" onclick="sendPreset(90)" disabled>
+        <span class="preset-icon">🪑</span><span class="preset-name">Sit</span><span class="preset-angle">90°</span>
+      </button>
+      <button class="preset-btn" id="presetStand" onclick="sendPreset(0)" disabled>
+        <span class="preset-icon">🧍</span><span class="preset-name">Stand</span><span class="preset-angle">0°</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="slider-section">
+    <div class="section-label">Servo Movement Speed (ms/deg)</div>
+    <div class="slider-wrap">
+      <div class="slider-row">
+        <span style="font-size:.75rem;color:var(--muted)">Fast</span>
+        <input type="range" id="speedSlider" min="0" max="100" value="10" disabled oninput="document.getElementById('speedVal').textContent=this.value" onchange="sendCmd('V'+this.value)"/>
+        <span style="font-size:.75rem;color:var(--muted)">Slow</span>
+        <span class="slider-val" id="speedVal">10</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="slider-section">
+    <div class="section-label">Auto-Assist Sensitivity (Threshold)</div>
+    <div class="slider-wrap">
+      <div class="slider-row">
+        <span style="font-size:.75rem;color:var(--muted)">5°</span>
+        <input type="range" id="threshSlider" min="5" max="80" value="32" disabled oninput="document.getElementById('threshVal').textContent=this.value+'°'" onchange="sendCmd('T'+this.value)"/>
+        <span style="font-size:.75rem;color:var(--muted)">80°</span>
+        <span class="slider-val" id="threshVal">32°</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-card">
+    <div class="log-header">Live Telemetry (Pitch)</div>
+    <div style="padding:10px; height:150px; width:100%; box-sizing:border-box;">
+      <canvas id="pitchChart"></canvas>
+    </div>
+  </div>
+
+  <div class="log-card">
+    <div class="log-header">
+      Activity Log
+      <div class="log-actions">
+        <button class="log-action-btn" onclick="exportLog()">📥 Export</button>
+        <button class="log-action-btn" onclick="clearLog()">Clear</button>
+      </div>
+    </div>
+    <div id="logContent"></div>
+  </div>
+
+<script>
+const NUS_SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_TX='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+let btDevice=null,rxChar=null,txChar=null,connected=false;
+let sessionStart=null,sessionInterval=null,reconnectTimeout=null;
+
+if(!navigator.bluetooth){document.getElementById('nobleMsg').style.display='block';document.getElementById('connectBtn').disabled=true}
+
+function haptic(ms){try{navigator.vibrate&&navigator.vibrate(ms||30)}catch(e){}}
+
+async function toggleConnect(){haptic(20);connected?disconnect():await connect()}
+
+async function connect(){
+  try{
+    log('Scanning for Exoskeleton...','info');
+    setConnState('scanning');
+    btDevice=await navigator.bluetooth.requestDevice({filters:[{name:'Exoskeleton'}],optionalServices:[NUS_SERVICE]});
+    btDevice.addEventListener('gattserverdisconnected',onDisconnected);
+    log('Connecting…','info');
+    const server=await btDevice.gatt.connect();
+    const service=await server.getPrimaryService(NUS_SERVICE);
+    txChar=await service.getCharacteristic(NUS_TX);
+    rxChar=await service.getCharacteristic(NUS_RX);
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged',onStatusUpdate);
+    connected=true;
+    setConnState('connected');
+    log('Connected to Exoskeleton ✓','ok');
+    speak("Exoskeleton connected");
+    enableButtons(true);
+    startSession();
+    setTimeout(()=>sendCmd('s'),300);
+  }catch(e){
+    log('Error: '+e.message,'err');
+    setConnState('idle');
+  }
+}
+
+function disconnect(){
+  clearTimeout(reconnectTimeout);
+  if(btDevice&&btDevice.gatt.connected)btDevice.gatt.disconnect();
+  onDisconnected(null,true);
+}
+
+function onDisconnected(evt,manual){
+  const wasConnected=connected;
+  connected=false;rxChar=null;txChar=null;
+  setConnState('idle');
+  enableButtons(false);
+  stopSession();
+  log('Disconnected.','err');
+  speak("Exoskeleton disconnected");
+  updateStats(null,null,null,null);
+  // Auto-reconnect if not manual disconnect
+  if(!manual&&wasConnected&&btDevice){
+    log('Attempting reconnect in 3s...','info');
+    reconnectTimeout=setTimeout(async()=>{
+      try{
+        log('Reconnecting...','info');
+        setConnState('scanning');
+        const server=await btDevice.gatt.connect();
+        const service=await server.getPrimaryService(NUS_SERVICE);
+        txChar=await service.getCharacteristic(NUS_TX);
+        rxChar=await service.getCharacteristic(NUS_RX);
+        await txChar.startNotifications();
+        txChar.addEventListener('characteristicvaluechanged',onStatusUpdate);
+        connected=true;
+        setConnState('connected');
+        log('Reconnected ✓','ok');
+        enableButtons(true);
+        startSession();
+        setTimeout(()=>sendCmd('s'),300);
+      }catch(e){
+        log('Reconnect failed: '+e.message,'err');
+        setConnState('idle');
+      }
+    },3000);
+  }
+}
+
+async function sendCmd(cmd){
+  if(!rxChar)return;
+  haptic(25);
+  try{
+    await rxChar.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+    log('Sent: '+cmd,'info');
+    
+    // Command Feedback
+    if(cmd === '1') speak("Assist mode");
+    if(cmd === '0') speak("Relax mode");
+    if(cmd === '+') speak("Increasing");
+    if(cmd === '-') speak("Decreasing");
+    if(cmd === 'A') speak("Auto mode enabled. Disconnecting.");
+    if(cmd === 'M') speak("Manual mode enabled");
+
+    // Update glow states
+    if(cmd==='1'){document.getElementById('assistBtn').classList.add('active-glow');document.getElementById('relaxBtn').classList.remove('active-glow')}
+    if(cmd==='0'){document.getElementById('relaxBtn').classList.add('active-glow');document.getElementById('assistBtn').classList.remove('active-glow')}
+  }catch(e){log('Send error: '+e.message,'err')}
+}
+
+function sendPreset(angle){
+  haptic(40);
+  sendCmd('A'+angle);
+  const names = {0: "Standing", 45: "Walking", 90: "Sitting"};
+  if(names[angle]) speak(names[angle]);
+  document.getElementById('angleSlider').value=angle;
+  document.getElementById('sliderVal').textContent=angle+'°';
+}
+
+let sliderDebounce=null;
+function onSlider(val){
+  document.getElementById('sliderVal').textContent=val+'°';
+  clearTimeout(sliderDebounce);
+  sliderDebounce=setTimeout(()=>{sendCmd('A'+val)},150);
+}
+
+function onStatusUpdate(event){
+  const raw=new TextDecoder().decode(event.target.value);
+  const parts={};
+  raw.split(',').forEach(p=>{const[k,v]=p.split(':');if(k&&v!==undefined)parts[k.trim()]=v.trim()});
+  const angle=parts['ANGLE']!==undefined?parseInt(parts['ANGLE']):null;
+  const bat=parts['BAT']!==undefined?parseInt(parts['BAT']):null;
+  const volt=parts['VOLT']!==undefined?parseFloat(parts['VOLT']):null;
+  const pitch=parts['PITCH']!==undefined?parseFloat(parts['PITCH']):null;
+  const mode=parts['MODE']||null;
+  updateStats(angle,bat,volt,mode,pitch);
+}
+
+function updateStats(angle,bat,volt,mode,pitch){
+  const av=document.getElementById('angleValue'),bv=document.getElementById('battValue');
+  const bb=document.getElementById('battBar'),vv=document.getElementById('voltValue');
+  const mb=document.getElementById('modeBadge');
+
+  if(pitch!==null&&!isNaN(pitch)){
+    updateChart(pitch);
+  }
+
+  if(angle!==null&&!isNaN(angle)){
+    av.textContent=angle;updateArc(angle);
+    document.getElementById('angleSlider').value=angle;
+    document.getElementById('sliderVal').textContent=angle+'°';
+  }else{av.textContent='--'}
+
+  if(bat!==null&&!isNaN(bat)){
+    bv.textContent=bat;bb.style.width=bat+'%';
+    bv.className='stat-value'+(bat<=15?' low':bat<=40?' medium':'');
+    bb.style.background=bat<=15?'var(--red)':bat<=40?'var(--orange)':'var(--green)';
+    
+    // Battery Warning
+    if(bat <= 15 && !window.lastBatWarn) {
+      speak("Warning: Battery is low. Please charge.");
+      window.lastBatWarn = true;
+    } else if (bat > 15) {
+      window.lastBatWarn = false;
+    }
+  }else{bv.textContent='--';bb.style.width='0%'}
+
+  if(volt!==null&&!isNaN(volt)){vv.textContent=volt.toFixed(1)}else{vv.textContent='--'}
+
+  if(mode){
+    mb.textContent=mode;
+    mb.className='mode-badge '+(mode==='AUTO'?'auto':'manual');
+    
+    // Disable manual buttons if in AUTO mode, since hardware ignores them
+    if(connected) {
+      const isManual = (mode === 'MANUAL');
+      ['assistBtn','relaxBtn','plusBtn','minusBtn','angleSlider','presetWalk','presetSit','presetStand'].forEach(id=>{
+        document.getElementById(id).disabled = !isManual;
+      });
+      if(!isManual) {
+        document.getElementById('assistBtn').classList.remove('active-glow');
+        document.getElementById('relaxBtn').classList.remove('active-glow');
+      }
+    }
+  }
+}
+
+function updateArc(angle){
+  const arcLen=283,ratio=Math.min(Math.max(angle,0),180)/180,filled=arcLen*ratio;
+  document.getElementById('arcFill').setAttribute('stroke-dasharray',filled+' '+(arcLen-filled));
+  const cx=110,cy=110,r=90,rad=Math.PI-ratio*Math.PI;
+  const dx=cx+r*Math.cos(rad),dy=cy-r*Math.sin(rad);
+  const dot=document.getElementById('arcDot');
+  dot.setAttribute('cx',dx.toFixed(1));dot.setAttribute('cy',dy.toFixed(1));
+}
+
+function setConnState(state){
+  const dot=document.getElementById('dot'),label=document.getElementById('connLabel');
+  const sub=document.getElementById('connSub'),btn=document.getElementById('connectBtn');
+  dot.className='dot';
+  if(state==='connected'){
+    dot.classList.add('connected');label.textContent='Connected';
+    sub.textContent=btDevice?btDevice.name:'Exoskeleton';
+    btn.textContent='Disconnect';btn.className='disconnect';
+  }else if(state==='scanning'){
+    dot.classList.add('advertising');label.textContent='Scanning…';
+    sub.textContent='Looking for Exoskeleton';btn.textContent='Cancel';btn.className='';
+  }else{
+    label.textContent='Not Connected';sub.textContent='Press Connect to start';
+    btn.textContent='Connect';btn.className='';
+  }
+}
+
+function enableButtons(on){
+  ['assistBtn','relaxBtn','plusBtn','minusBtn','angleSlider','presetWalk','presetSit','presetStand','speedSlider','threshSlider'].forEach(id=>{
+    document.getElementById(id).disabled=!on;
+  });
+  if(!on){
+    document.getElementById('assistBtn').classList.remove('active-glow');
+    document.getElementById('relaxBtn').classList.remove('active-glow');
+  }
+}
+
+// Session timer
+function startSession(){
+  sessionStart=Date.now();
+  const el=document.getElementById('sessionTimer');el.style.display='block';
+  sessionInterval=setInterval(()=>{
+    const s=Math.floor((Date.now()-sessionStart)/1000);
+    const h=String(Math.floor(s/3600)).padStart(2,'0');
+    const m=String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const sec=String(s%60).padStart(2,'0');
+    el.textContent='⏱ '+h+':'+m+':'+sec;
+  },1000);
+}
+function stopSession(){
+  clearInterval(sessionInterval);
+  document.getElementById('sessionTimer').style.display='none';
+}
+
+// Log
+function log(msg,type=''){
+  const div=document.createElement('div');
+  div.className='log-line '+type;
+  const t=new Date().toLocaleTimeString('en-GB',{hour12:false});
+  div.textContent='['+t+'] '+msg;
+  const box=document.getElementById('logContent');
+  box.prepend(div);
+  while(box.children.length>50)box.removeChild(box.lastChild);
+}
+function clearLog(){document.getElementById('logContent').innerHTML=''}
+function exportLog(){
+  const lines=[...document.getElementById('logContent').children].map(el=>el.textContent).reverse().join('\n');
+  const blob=new Blob([lines],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='exoskeleton_log_'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+// --- Security & WebAuthn ---
+let appPassword = localStorage.getItem('exo_password') || '1234';
+let credentialId = localStorage.getItem('exo_credentialId');
+
+if(credentialId) {
+  document.getElementById('bioLoginBtn').style.display = 'flex';
+}
+
+function login() {
+  const val = document.getElementById('passInput').value;
+  if(val === appPassword) {
+    unlockApp();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function unlockApp() {
+  document.getElementById('lockScreen').style.opacity = '0';
+  sessionStorage.setItem('exo_unlocked', 'true');
+  setTimeout(() => { document.getElementById('lockScreen').style.display = 'none'; }, 400);
+}
+
+// Check if already unlocked in this session (survives page refresh)
+if(sessionStorage.getItem('exo_unlocked') === 'true') {
+  document.getElementById('lockScreen').style.display = 'none';
+}
+
+// Utility to convert strings to ArrayBuffer for WebAuthn
+function bufferToBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function base64ToBuffer(b64) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for(let i=0; i<bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function registerBiometric() {
+  try {
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: "Exoskeleton App" },
+        user: {
+          id: crypto.getRandomValues(new Uint8Array(16)),
+          name: "exo_user",
+          displayName: "Exoskeleton User"
+        },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform" },
+        timeout: 60000,
+        attestation: "none"
+      }
+    });
+    localStorage.setItem('exo_credentialId', bufferToBase64(cred.rawId));
+    credentialId = localStorage.getItem('exo_credentialId');
+    document.getElementById('bioLoginBtn').style.display = 'flex';
+    alert("Fingerprint successfully registered!");
+  } catch(e) {
+    alert("Biometric registration failed or unsupported. " + e.message);
+  }
+}
+
+async function biometricLogin() {
+  if(!credentialId) return;
+  try {
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{
+          type: "public-key",
+          id: base64ToBuffer(credentialId)
+        }],
+        timeout: 60000
+      }
+    });
+    if(assertion) unlockApp();
+  } catch(e) {
+    alert("Biometric login failed. " + e.message);
+  }
+}
+
+function changePassword() {
+  const val = document.getElementById('newPassInput').value;
+  if(val.length >= 4) {
+    localStorage.setItem('exo_password', val);
+    appPassword = val;
+    alert("Password updated!");
+    document.getElementById('newPassInput').value = '';
+  } else {
+    alert("Password must be at least 4 characters.");
+  }
+}
+
+function saveEmergencyContact() {
+  const phone = document.getElementById('emergencyPhone').value;
+  if(phone) {
+    localStorage.setItem('exo_emergency_contact', phone);
+    alert("Emergency contact saved!");
+  } else {
+    alert("Please enter a valid phone number.");
+  }
+}
+
+async function sendSOS() {
+  const contact = localStorage.getItem('exo_emergency_contact');
+  if(!contact) {
+    alert("Please set an Emergency Contact in Settings first!");
+    openSettings();
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser.");
+    return;
+  }
+
+  log("Getting location for SOS...", "info");
+  haptic(100);
+
+  navigator.geolocation.getCurrentPosition((position) => {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+    const message = `EMERGENCY! I need help with my Exoskeleton. My location: ${mapsLink}`;
+    
+    // Attempt WhatsApp first, fallback to SMS
+    const waUrl = `https://wa.me/${contact}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+    
+    log("SOS Location Sent!", "ok");
+  }, (err) => {
+    log("Location Error: " + err.message, "err");
+    // Fallback: Send message without location
+    const message = `EMERGENCY! I need help with my Exoskeleton. (Location unavailable)`;
+    const waUrl = `https://wa.me/${contact}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+  }, { enableHighAccuracy: true });
+}
+
+// --- Settings & Theme ---
+function openSettings() {
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+function setTheme(name, hex, glow) {
+  document.documentElement.style.setProperty('--blue', hex);
+  document.documentElement.style.setProperty('--blue-glow', glow);
+  document.querySelectorAll('.theme-dot').forEach(el => el.classList.remove('active'));
+  document.querySelector('.theme-' + name).classList.add('active');
+  localStorage.setItem('exo_theme_name', name);
+  localStorage.setItem('exo_theme_hex', hex);
+  localStorage.setItem('exo_theme_glow', glow);
+}
+
+// Load saved theme
+const savedThemeName = localStorage.getItem('exo_theme_name');
+if(savedThemeName) {
+  setTheme(savedThemeName, localStorage.getItem('exo_theme_hex'), localStorage.getItem('exo_theme_glow'));
+}
+
+// --- Voice Control ---
+let recognition;
+let isListening = false;
+let isVoiceEnabled = false;
+let currentLang = localStorage.getItem('exo_lang') || 'en-IN';
+
+function changeLanguage() {
+  currentLang = document.getElementById('langSelect').value;
+  localStorage.setItem('exo_lang', currentLang);
+  if (recognition) recognition.lang = currentLang;
+  log("Voice Language set to " + currentLang, "info");
+  
+  // Feedback in the new language
+  const msgs = {
+    'en-IN': "Language set to English",
+    'hi-IN': "भाषा हिंदी सेट की गई",
+    'kn-IN': "ಭಾಷೆಯನ್ನು ಕನ್ನಡಕ್ಕೆ ಹೊಂದಿಸಲಾಗಿದೆ",
+    'te-IN': "భాష తెలుగుకు సెట్ చేయబడింది"
+  };
+  speak(msgs[currentLang] || msgs['en-IN']);
+}
+
+function toggleFeedback(enabled) {
+  localStorage.setItem('exo_voice_feedback', enabled ? 'true' : '');
+  if(enabled) speak("Voice feedback enabled");
+}
+
+let isSpeaking = false;
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (err) { console.log(err); }
+}
+
+function releaseWakeLock() {
+  if (wakeLock !== null) {
+    wakeLock.release().then(() => { wakeLock = null; }).catch(()=>{});
+  }
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLock !== null && document.visibilityState === 'visible' && isVoiceEnabled) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+  }
+});
+
+function toggleMode() {
+  if(!connected) return;
+  const current = document.getElementById('modeBadge').textContent.trim();
+  if(current === 'AUTO') sendCmd('M');
+  else sendCmd('A');
+}
+
+function speak(text) {
+  if (!localStorage.getItem('exo_voice_feedback')) return;
+  window.speechSynthesis.cancel(); // Stop current speech
+  isSpeaking = true;
+  
+  if (isListening && recognition) {
+    try { recognition.abort(); } catch(e) {}
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = currentLang;
+  utterance.rate = 1.0;
+  
+  utterance.onend = function() {
+    isSpeaking = false;
+    if (isVoiceEnabled && !isListening) {
+      setTimeout(startContinuousListening, 200);
+    }
+  };
+  
+  utterance.onerror = function() {
+    isSpeaking = false;
+    if (isVoiceEnabled && !isListening) {
+      setTimeout(startContinuousListening, 200);
+    }
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRec();
+  recognition.continuous = false; // We restart manually for better mobile compatibility
+  recognition.interimResults = false;
+  recognition.lang = currentLang;
+
+  recognition.onresult = function(event) {
+    const cmd = event.results[0][0].transcript.toLowerCase().trim();
+    log("Voice heard: " + cmd, "info");
+    
+    const kwAssist = ['assist', 'help', 'start', 'मदद', 'सहायता', 'शुरू', 'ಸಹಾಯ', 'ಶುರು', 'ಸಹಾಯಮಾಡು', 'సహాయం', 'మొదలు'];
+    const kwRelax = ['relax', 'stop', 'रुको', 'बंद', 'रुक जाओ', 'ನಿಲ್ಲಿಸು', 'ನಿಲ್ಲು', 'ಆಫ್', 'ఆగు', 'ఆపు'];
+    const kwWalk = ['walk', 'चलो', 'चलना', 'ನಡೆ', 'ನಡೆಯಿರಿ', 'ನಡೀರಿ', 'నడు', 'నడవండి'];
+    const kwSit = ['sit', 'बैठो', 'बैठ', 'बैठ जाओ', 'ಕುಳಿತುಕೋ', 'ಕೂತ್ಕೋ', 'కూర్చో', 'కూర్చోండి'];
+    const kwStand = ['stand', 'खड़े', 'उठो', 'ಖಡೆ', 'ನಿಂತುಕೋ', 'ಎದ್ದೇಳು', 'నిలబడు', 'లేచి'];
+    const kwAuto = ['auto', 'automatic', 'ऑटो', 'स्वचालित', 'ಆಟೋ', 'ఆటో'];
+    const kwManual = ['manual', 'मैनुअल', 'ಮ್ಯಾನ್ಯುವಲ್', 'మాన్యువల్'];
+
+    const matches = (keywords) => keywords.some(k => cmd.includes(k.toLowerCase()));
+
+    if(matches(kwAssist)) {
+      if(!document.getElementById('assistBtn').disabled) sendCmd('1');
+      else if(connected) speak("Please switch to manual mode first");
+    } else if(matches(kwRelax)) {
+      if(!document.getElementById('relaxBtn').disabled) sendCmd('0');
+      else if(connected) speak("Please switch to manual mode first");
+    } else if(matches(kwWalk)) {
+      if(!document.getElementById('presetWalk').disabled) sendPreset(45);
+      else if(connected) speak("Please switch to manual mode first");
+    } else if(matches(kwSit)) {
+      if(!document.getElementById('presetSit').disabled) sendPreset(90);
+      else if(connected) speak("Please switch to manual mode first");
+    } else if(matches(kwStand)) {
+      if(!document.getElementById('presetStand').disabled) sendPreset(0);
+      else if(connected) speak("Please switch to manual mode first");
+    } else if(matches(kwAuto)) {
+      if(connected) sendCmd('A');
+    } else if(matches(kwManual)) {
+      if(connected) sendCmd('M');
+    } else {
+      log("Voice command not recognized.", "err");
+    }
+  };
+
+  recognition.onend = function() {
+    isListening = false;
+    if (isVoiceEnabled && !isSpeaking) {
+      setTimeout(startContinuousListening, 200);
+    }
+  };
+  
+  recognition.onerror = function(event) {
+    if (event.error !== 'no-speech') {
+      log("Voice error: " + event.error, "err");
+    }
+    isListening = false;
+  };
+} else {
+  console.log("Speech Recognition not supported in this browser.");
+}
+
+function startContinuousListening() {
+  if (!isListening && isVoiceEnabled && !isSpeaking && recognition) {
+    try {
+      recognition.start();
+      isListening = true;
+    } catch(e) {}
+  }
+}
+
+function toggleVoiceSwitch(checked) {
+  isVoiceEnabled = checked;
+  if(!recognition) {
+    alert("Voice control not supported in your browser.");
+    document.getElementById('voiceToggle').checked = false;
+    return;
+  }
+  if(isVoiceEnabled) {
+    log("Continuous Voice Mode ON", "ok");
+    requestWakeLock();
+    startContinuousListening();
+  } else {
+    log("Continuous Voice Mode OFF", "info");
+    isVoiceEnabled = false;
+    isListening = false;
+    releaseWakeLock();
+    try { recognition.abort(); } catch(e) {}
+  }
+}
+
+// Chart Logic
+let pitchChart=null;
+const chartData=[],chartLabels=[];
+function initChart(){
+  const ctx=document.getElementById('pitchChart').getContext('2d');
+  pitchChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:chartLabels,
+      datasets:[{
+        label:'Pitch Angle',
+        data:chartData,
+        borderColor:'#3b82f6',
+        backgroundColor:'rgba(59,130,246,0.1)',
+        borderWidth:2,
+        fill:true,
+        pointRadius:0,
+        tension:0.3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false,
+      scales:{
+        y:{min:-90,max:90,grid:{color:'#1e293b'}},
+        x:{display:false}
+      },
+      plugins:{legend:{display:false}}
+    }
+  });
+}
+function updateChart(pitch){
+  if(!pitchChart)return;
+  chartLabels.push('');
+  chartData.push(pitch);
+  if(chartData.length>40){chartData.shift();chartLabels.shift()}
+  pitchChart.update();
+}
+
+window.onload=()=>{
+  initChart();
+  const langSel = document.getElementById('langSelect');
+  if (langSel) langSel.value = currentLang;
+  
+  const contact = localStorage.getItem('exo_emergency_contact');
+  if(contact) document.getElementById('emergencyPhone').value = contact;
+
+  const feedback = localStorage.getItem('exo_voice_feedback');
+  if(feedback) document.getElementById('voiceFeedbackToggle').checked = true;
+};
+
+// Register Service Worker for PWA Support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.log('SW registration failed: ', err);
+    });
+  });
+}
+</script>
+</body>
+</html>

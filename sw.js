@@ -1,7 +1,12 @@
-const CACHE_NAME = 'exo-cache-v1';
+const CACHE_NAME = 'exo-cache-v6';
 const urlsToCache = [
   '/',
-  '/index.html'
+  '/index.html',
+  '/controller.html',
+  '/manifest.json',
+  '/icon.png',
+  '/icon-maskable.png',
+  '/icon-any.png'
 ];
 
 // Install event: cache files
