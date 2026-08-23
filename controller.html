@@ -82,6 +82,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 .preset-icon{font-size:1.3rem}
 .preset-name{font-size:.75rem;font-weight:600;color:var(--text)}
 .preset-angle{font-size:.65rem;color:var(--purple);font-weight:500}
+/* Self-Report Buttons (Novel Feature) */
+.report-section{width:100%;max-width:420px}
+.report-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.report-btn{border:none;border-radius:14px;padding:14px 8px;font-family:inherit;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:4px;-webkit-tap-highlight-color:transparent;font-size:1.4rem;position:relative;overflow:hidden}
+.report-btn:active{transform:scale(.92)}
+.report-btn:disabled{opacity:.35;cursor:not-allowed}
+.report-btn span{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.report-pain{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--red)}
+.report-pain:hover:not(:disabled){background:rgba(239,68,68,.25)}
+.report-fine{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:var(--green)}
+.report-fine:hover:not(:disabled){background:rgba(34,197,94,.25)}
+.report-hard{background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.4);color:var(--orange)}
+.report-hard:hover:not(:disabled){background:rgba(249,115,22,.25)}
 .log-card{width:100%;max-width:420px;background:var(--surface);border-radius:var(--radius);border:1px solid #1e293b;overflow:hidden}
 .log-header{padding:10px 16px;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .log-actions{display:flex;gap:8px}
@@ -150,6 +163,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
         <input type="checkbox" id="voiceToggle" onchange="toggleVoiceSwitch(this.checked)">
         <span class="voice-slider"><span style="font-size:10px; margin-left:24px; margin-top:2px; opacity:0.7;">🎤</span></span>
       </label>
+      <button class="icon-btn" onclick="window.location.href='pcb_designer.html'" title="PCB Workbench">🔌</button>
       <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
       <div class="mode-badge auto" id="modeBadge" style="margin-left:4px; cursor:pointer;" onclick="toggleMode()" title="Click to toggle Mode">AUTO</div>
     </div>
@@ -300,6 +314,48 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
       <button class="preset-btn" id="presetStand" onclick="sendPreset(0)" disabled>
         <span class="preset-icon">🧍</span><span class="preset-name">Stand</span><span class="preset-angle">0°</span>
       </button>
+    </div>
+  </div>
+
+  <!-- Self-Report Fusion Buttons (Novel Feature) -->
+  <div class="report-section">
+    <div class="section-label">How do you feel right now?</div>
+    <div class="report-grid">
+      <button class="report-btn report-pain" id="reportPain" onclick="sendReport('PAIN')" disabled>
+        😣<span>Pain</span>
+      </button>
+      <button class="report-btn report-fine" id="reportFine" onclick="sendReport('FINE')" disabled>
+        😊<span>Fine</span>
+      </button>
+      <button class="report-btn report-hard" id="reportHard" onclick="sendReport('HARD')" disabled>
+        😓<span>Hard</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Calibration Section (Novel Feature) -->
+  <div class="report-section">
+    <div class="section-label">🎯 Self-Calibration</div>
+    <div style="background:var(--surface);border-radius:14px;border:1px solid #1e293b;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:0.78rem;color:var(--muted);line-height:1.5;">
+        Personalizes thresholds to YOUR body.<br>
+        <strong style="color:var(--text);">Stand 3s → Sit 3s → March 6s</strong>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">
+        <button id="calStartBtn" onclick="sendCmd('CAL')" disabled
+          style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;padding:12px 8px;font-family:inherit;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all .18s;">
+          🎯 Start Cal
+        </button>
+        <button id="calCancelBtn" onclick="sendCmd('CAL_CANCEL')" disabled
+          style="background:var(--surface2);color:var(--muted);border:1px solid #2d3748;border-radius:10px;padding:12px 6px;font-family:inherit;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all .18s;">
+          ✖ Cancel
+        </button>
+        <button id="calResetBtn" onclick="confirmCalReset()" disabled
+          style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 6px;font-family:inherit;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all .18s;">
+          🗑 Reset
+        </button>
+      </div>
+      <div id="calStatus" style="font-size:0.75rem;color:var(--muted);text-align:center;min-height:16px;"></div>
     </div>
   </div>
 
@@ -456,6 +512,36 @@ function sendPreset(angle){
   document.getElementById('sliderVal').textContent=angle+'°';
 }
 
+// --- Subjective Self-Report Fusion (Novel Feature) ---
+async function sendReport(feeling) {
+  if(!rxChar) return;
+  haptic(60);
+  const cmd = 'REPORT:' + feeling;
+  try {
+    await rxChar.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+    const icons = { PAIN: '😣', FINE: '😊', HARD: '😓' };
+    const t = new Date().toLocaleTimeString('en-GB', {hour12: false});
+    log('[SELF-REPORT ' + t + '] You felt: ' + icons[feeling] + ' ' + feeling,
+        feeling === 'PAIN' ? 'err' : feeling === 'FINE' ? 'ok' : 'info');
+    speak('Recorded: ' + feeling.toLowerCase());
+    // Flash the button briefly
+    const btn = document.getElementById('report' + feeling.charAt(0) + feeling.slice(1).toLowerCase());
+    if(btn) { btn.style.opacity='0.5'; setTimeout(()=>{btn.style.opacity='1';}, 300); }
+  } catch(e) { log('Report error: ' + e.message, 'err'); }
+}
+
+// --- Calibration helpers (Novel Feature) ---
+function confirmCalReset() {
+  if(confirm('Reset personal calibration and go back to defaults?')) {
+    sendCmd('CAL_RESET');
+  }
+}
+
+function setCalStatus(msg, color) {
+  const el = document.getElementById('calStatus');
+  if(el) { el.textContent = msg; el.style.color = color || 'var(--muted)'; }
+}
+
 let sliderDebounce=null;
 function onSlider(val){
   document.getElementById('sliderVal').textContent=val+'°';
@@ -465,6 +551,16 @@ function onSlider(val){
 
 function onStatusUpdate(event){
   const raw=new TextDecoder().decode(event.target.value);
+
+  // Handle CAL status messages (not CSV format)
+  if(raw.startsWith('CAL_STARTED'))  { setCalStatus('📍 Stand straight for 3 seconds...', 'var(--cyan)'); log('Calibration started','info'); return; }
+  if(raw.startsWith('CAL_PHASE_SIT'))   { setCalStatus('🪑 Sit down now — hold 3 seconds...', 'var(--orange)'); return; }
+  if(raw.startsWith('CAL_PHASE_MARCH')) { setCalStatus('🚶 March in place for 6 seconds!', 'var(--blue)'); return; }
+  if(raw.startsWith('CAL_COMPLETE'))    { setCalStatus('✅ Calibration saved!', 'var(--green)'); speak('Calibration complete'); log('Personal calibration saved','ok'); return; }
+  if(raw.startsWith('CAL_WARN_RANGE'))  { setCalStatus('⚠️ Range too small — using defaults', 'var(--red)'); return; }
+  if(raw.startsWith('CAL_RESET_OK') || raw.startsWith('RESET_OK')) { setCalStatus('🔄 Reset to defaults', 'var(--muted)'); log('Calibration reset','info'); return; }
+  if(raw.startsWith('REPORT_OK:'))      { return; } // Already handled in sendReport
+
   const parts={};
   raw.split(',').forEach(p=>{const[k,v]=p.split(':');if(k&&v!==undefined)parts[k.trim()]=v.trim()});
   const angle=parts['ANGLE']!==undefined?parseInt(parts['ANGLE']):null;
@@ -474,6 +570,7 @@ function onStatusUpdate(event){
   const mode=parts['MODE']||null;
   updateStats(angle,bat,volt,mode,pitch);
 }
+
 
 function updateStats(angle,bat,volt,mode,pitch){
   const av=document.getElementById('angleValue'),bv=document.getElementById('battValue');
@@ -551,7 +648,7 @@ function setConnState(state){
 }
 
 function enableButtons(on){
-  ['assistBtn','relaxBtn','plusBtn','minusBtn','angleSlider','presetWalk','presetSit','presetStand','speedSlider','threshSlider'].forEach(id=>{
+  ['assistBtn','relaxBtn','plusBtn','minusBtn','angleSlider','presetWalk','presetSit','presetStand','speedSlider','threshSlider','reportPain','reportFine','reportHard','calStartBtn','calCancelBtn','calResetBtn'].forEach(id=>{
     document.getElementById(id).disabled=!on;
   });
   if(!on){
@@ -890,6 +987,13 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       if(connected) sendCmd('A');
     } else if(matches(kwManual)) {
       if(connected) sendCmd('M');
+    // --- Self-Report Voice Commands (Novel Feature) ---
+    } else if(cmd.includes('pain') || cmd.includes('hurt') || cmd.includes('दर्द') || cmd.includes('ನೋವು') || cmd.includes('నొప్పి')) {
+      if(connected) sendReport('PAIN');
+    } else if(cmd.includes('fine') || cmd.includes('good') || cmd.includes('okay') || cmd.includes('ठीक') || cmd.includes('ಸರಿ') || cmd.includes('బాగుంది')) {
+      if(connected) sendReport('FINE');
+    } else if(cmd.includes('hard') || cmd.includes('difficult') || cmd.includes('कठिन') || cmd.includes('ಕಷ್ಟ') || cmd.includes('కష్టం')) {
+      if(connected) sendReport('HARD');
     } else {
       log("Voice command not recognized.", "err");
     }

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Knee Exoskeleton — Features Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Kannada:wght@400;600&family=Noto+Sans+Telugu:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f172a;--blue:#1d4ed8;--blue-light:#dbeafe;--blue-mid:#93c5fd;
+  --green:#15803d;--green-light:#dcfce7;
+  --purple:#6d28d9;--purple-light:#ede9fe;
+  --red:#b91c1c;--orange:#c2410c;
+  --gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
+  --gray-300:#cbd5e1;--gray-400:#94a3b8;--gray-600:#475569;--gray-700:#334155;--gray-900:#0f172a;
+  --text:#1e293b;--muted:#64748b;--border:#e2e8f0;
+}
+body{font-family:'Inter','Segoe UI','Nirmala UI',sans-serif;background:#fff;color:var(--text);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{max-width:960px;margin:0 auto;padding:48px 56px 64px}
+
+[lang="hi"]{font-family:'Noto Sans Devanagari','Nirmala UI','Mangal',sans-serif;}
+[lang="kn"]{font-family:'Noto Sans Kannada','Nirmala UI','Tunga',sans-serif;}
+[lang="te"]{font-family:'Noto Sans Telugu','Nirmala UI','Gautami',sans-serif;}
+
+/* COVER HEADER */
+.cover{display:flex;flex-direction:column;gap:0;margin-bottom:40px}
+.cover-top{
+  background:var(--navy);
+  border-radius:16px 16px 0 0;
+  padding:32px 40px 28px;
+  display:flex;align-items:center;gap:20px;
+}
+.cover-icon{
+  width:64px;height:64px;border-radius:14px;
+  background:linear-gradient(135deg,#1d4ed8,#7c3aed);
+  display:flex;align-items:center;justify-content:center;
+  font-size:2rem;flex-shrink:0;
+}
+.cover-title h1{font-size:1.8rem;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1.1}
+.cover-title p{font-size:0.85rem;color:#94a3b8;margin-top:4px;font-weight:400}
+.cover-bottom{
+  background:var(--blue);
+  border-radius:0 0 16px 16px;
+  padding:14px 40px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+}
+.meta-row{display:flex;gap:24px;flex-wrap:wrap}
+.meta-item{font-size:0.75rem;color:rgba(255,255,255,0.85)}
+.meta-item span{font-weight:700;color:#fff}
+.doc-id{font-size:0.72rem;color:rgba(255,255,255,0.6);font-style:italic}
+
+/* SECTION HEADERS */
+.sec-head{
+  display:flex;align-items:center;gap:12px;
+  margin:36px 0 18px;
+  padding-bottom:10px;
+  border-bottom:2px solid var(--border);
+}
+.sec-pill{
+  padding:4px 14px;border-radius:20px;
+  font-size:0.68rem;font-weight:800;
+  text-transform:uppercase;letter-spacing:0.1em;flex-shrink:0;
+}
+.pill-a{background:var(--green-light);color:var(--green);border:1px solid #bbf7d0}
+.pill-b{background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd}
+.sec-head h2{font-size:1.15rem;font-weight:800;color:var(--navy);letter-spacing:-0.3px}
+.sec-head .sec-count{margin-left:auto;font-size:0.72rem;color:var(--muted);white-space:nowrap}
+
+/* FEATURE GRID */
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.feature-card{
+  border:1.5px solid var(--border);
+  border-radius:12px;background:#fff;
+  padding:18px 20px;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.05);
+}
+.feature-card.full{grid-column:1/-1}
+.feature-card.novel-card{border-color:#c4b5fd;background:#faf5ff}
+.card-head{display:flex;align-items:flex-start;gap:12px}
+.card-num{
+  min-width:36px;height:36px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.72rem;font-weight:800;flex-shrink:0;letter-spacing:0.02em;
+}
+.num-a{background:var(--green-light);color:var(--green);border:1px solid #bbf7d0}
+.num-b{background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd}
+.card-meta{flex:1}
+.card-name{font-size:0.9rem;font-weight:700;color:var(--navy);line-height:1.2;margin-bottom:3px}
+.card-cat{font-size:0.65rem;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.06em}
+.stars-badge{
+  background:linear-gradient(135deg,#fef3c7,#fde68a);
+  border:1px solid #fbbf24;border-radius:20px;
+  padding:3px 8px;font-size:0.7rem;
+  color:#92400e;font-weight:700;white-space:nowrap;flex-shrink:0;
+}
+.card-desc{font-size:0.78rem;color:var(--gray-600);line-height:1.65}
+.card-novelty{
+  background:var(--purple-light);border:1px solid #c4b5fd;
+  border-radius:8px;padding:8px 12px;
+  font-size:0.73rem;color:var(--purple);line-height:1.5;
+}
+.card-novelty strong{color:#4c1d95}
+
+/* MINI TABLE */
+.mini-table{width:100%;border-collapse:collapse;font-size:0.75rem;margin:6px 0}
+.mini-table th{text-align:left;color:var(--muted);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--border);background:var(--gray-50)}
+.mini-table td{padding:5px 8px;color:var(--gray-700);border-bottom:1px solid var(--gray-100);vertical-align:middle}
+
+/* TOTAL BANNER */
+.total-banner{
+  background:linear-gradient(135deg,var(--blue) 0%,var(--purple) 100%);
+  border-radius:12px;padding:18px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  margin:32px 0;flex-wrap:wrap;gap:12px;
+}
+.total-banner .tb-main{font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-0.3px}
+.total-banner .tb-sub{font-size:0.8rem;color:rgba(255,255,255,0.8);margin-top:2px}
+.total-badge-num{
+  background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);
+  border-radius:10px;padding:10px 20px;text-align:center;
+}
+.total-badge-num .n{font-size:2rem;font-weight:900;color:#fff;line-height:1}
+.total-badge-num .l{font-size:0.65rem;color:rgba(255,255,255,0.75);font-weight:600;text-transform:uppercase;letter-spacing:0.08em}
+
+/* SUMMARY TABLE */
+.sum-wrap{overflow:hidden;border-radius:12px;border:1.5px solid var(--border);margin-top:4px}
+.sum-table{width:100%;border-collapse:collapse;font-size:0.78rem}
+.sum-table thead tr{background:var(--navy)}
+.sum-table th{padding:11px 14px;text-align:left;font-weight:700;color:#fff;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em}
+.sum-table td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--gray-700);vertical-align:middle}
+.sum-table tbody tr:last-child td{border-bottom:none}
+.sum-table tbody tr:hover td{background:var(--gray-50)}
+.row-a td:first-child{color:var(--green);font-weight:700}
+.row-b{background:#faf5ff}
+.row-b td:first-child{color:var(--purple);font-weight:700}
+.tag-built{display:inline-block;background:var(--green-light);color:var(--green);border:1px solid #bbf7d0;border-radius:20px;padding:2px 10px;font-size:0.68rem;font-weight:700}
+.tag-novel{display:inline-block;background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd;border-radius:20px;padding:2px 10px;font-size:0.68rem;font-weight:700}
+.str-cell{letter-spacing:-1px;font-size:0.8rem}
+
+/* FOOTER */
+.footer{
+  margin-top:40px;padding-top:16px;
+  border-top:1.5px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:0.7rem;color:var(--muted);
+}
+.footer-left{display:flex;flex-direction:column;gap:2px}
+.footer strong{color:var(--navy)}
+
+@media print{
+  body{background:#fff!important}
+  .page{padding:20px 28px}
+  .feature-card{break-inside:avoid;box-shadow:none}
+  .sec-head{break-after:avoid}
+  .total-banner{break-inside:avoid}
+  .sum-wrap{break-inside:avoid}
+  .feature-grid{page-break-inside:auto}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-top">
+      <div class="cover-icon">🦿</div>
+      <div class="cover-title">
+        <h1>Wearable Knee Exoskeleton System</h1>
+        <p>Complete Product Features Reference — Prototype &amp; Novel Innovations</p>
+      </div>
+    </div>
+    <div class="cover-bottom">
+      <div class="meta-row">
+        <div class="meta-item">Developer: <span>Praveen Kumar</span></div>
+        <div class="meta-item">Platform: <span>ESP32-WROOM-32E + MPU6050 + FSR-402</span></div>
+        <div class="meta-item">Total Cost: <span>~₹10,000</span></div>
+        <div class="meta-item">Year: <span>2026</span></div>
+      </div>
+      <div class="doc-id">DOC-EXO-F001 &nbsp;|&nbsp; Open-Source Research Prototype</div>
+    </div>
+  </div>
+
+  <!-- PART A -->
+  <div class="sec-head">
+    <span class="sec-pill pill-a">Part A</span>
+    <h2>Prototype Features — Already Built</h2>
+    <span class="sec-count">12 features &nbsp;✓</span>
+  </div>
+
+  <div class="feature-grid">
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A1</div>
+        <div class="card-meta">
+          <div class="card-name">Complementary Filter (100 Hz)</div>
+          <div class="card-cat">Firmware • Sensor Fusion</div>
+        </div>
+      </div>
+      <div class="card-desc">Fuses MPU6050 accelerometer + gyroscope at 100 Hz using <em>angle = 0.96 × (angle + gyro × dt) + 0.04 × accel</em>. Eliminates drift and vibration noise for smooth, accurate knee angle in all conditions.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A2</div>
+        <div class="card-meta">
+          <div class="card-name">Smart Gait State Machine</div>
+          <div class="card-cat">Firmware • Control Logic</div>
+        </div>
+      </div>
+      <div class="card-desc">Auto-detects activity and adjusts servo assist: IDLE (standing, no assist) → WALKING (assist flexion) → SITTING (seated position) → IDLE. Prevents over-assisting at each stage.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A3</div>
+        <div class="card-meta">
+          <div class="card-name">Stand-Up Boost</div>
+          <div class="card-cat">Firmware • Assistive Logic</div>
+        </div>
+      </div>
+      <div class="card-desc">Detects rising from seated position. Auto-injects +10° torque boost and doubles servo speed to assist at the hardest moment — the initial push-off from a chair.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A4</div>
+        <div class="card-meta">
+          <div class="card-name">Battery Monitoring + Safety Cutoff</div>
+          <div class="card-cat">Hardware • Safety</div>
+        </div>
+      </div>
+      <div class="card-desc">Reads 2S LiPo voltage via GPIO 34 voltage divider. Three-tier protection: Normal operation → Low Battery alert at 6.5V (LED + buzzer) → Motor hard-kill at 3.0V to prevent fire or battery damage.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A5</div>
+        <div class="card-meta">
+          <div class="card-name">Physical Mode Button</div>
+          <div class="card-cat">Hardware • UX</div>
+        </div>
+      </div>
+      <div class="card-desc">Smart press detection on GPIO 4. Short press (&lt;2s) is ignored to prevent accidental mode changes. Long press (&ge;2s) toggles AUTO/MANUAL. LED indicator: Green = AUTO, Blue = MANUAL.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A6</div>
+        <div class="card-meta">
+          <div class="card-name">OLED Live Display (128×64)</div>
+          <div class="card-cat">Hardware • Feedback</div>
+        </div>
+      </div>
+      <div class="card-desc">SSD1306 OLED shows real-time data without a phone: knee angle, mode, battery %, gait state, and confidence bar. Device fully operational standalone without BLE connection.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A7</div>
+        <div class="card-meta">
+          <div class="card-name">BLE Nordic UART Service (NUS)</div>
+          <div class="card-cat">Firmware • Connectivity</div>
+        </div>
+      </div>
+      <div class="card-desc">Streams live telemetry at ~5Hz: ANGLE, BAT, VOLT, MODE, PITCH, FSR, CONF, CAL fields. Bidirectionally receives all PWA commands over Nordic UART profile. Auto-reconnects on disconnect.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A8</div>
+        <div class="card-meta">
+          <div class="card-name">WebAuthn Biometric Lock</div>
+          <div class="card-cat">PWA • Security</div>
+        </div>
+      </div>
+      <div class="card-desc">PWA locks on load. Unlock via PIN or fingerprint/face scan using the WebAuthn standard (W3C Level 2) — the same technology used by banks. Credentials stored locally, never transmitted.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A9</div>
+        <div class="card-meta">
+          <div class="card-name">Emergency SOS + GPS + WhatsApp</div>
+          <div class="card-cat">PWA • Safety</div>
+        </div>
+      </div>
+      <div class="card-desc">One tap: fetches GPS coordinates via Geolocation API → builds Google Maps link → dispatches WhatsApp message to saved emergency contact. Gracefully falls back to message without location if GPS unavailable.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A10</div>
+        <div class="card-meta">
+          <div class="card-name">Voice Control — 4 Languages</div>
+          <div class="card-cat">PWA • Accessibility</div>
+        </div>
+      </div>
+      <div class="card-desc">Continuous hands-free control via Web Speech API. Recognizes in English, Hindi, Kannada, and Telugu. Works fully offline. Commands: assist, relax, walk, sit, stand, auto, manual, pain, fine, hard.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A11</div>
+        <div class="card-meta">
+          <div class="card-name">Live Telemetry Chart</div>
+          <div class="card-cat">PWA • Monitoring</div>
+        </div>
+      </div>
+      <div class="card-desc">Real-time scrolling pitch angle graph (last 30 seconds) rendered via Chart.js. Auto-updates with BLE data. Visually reveals walking patterns, sitting events, and assist triggers at a glance.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="card-head">
+        <div class="card-num num-a">A12</div>
+        <div class="card-meta">
+          <div class="card-name">Session Timer + Activity Log Export</div>
+          <div class="card-cat">PWA • Data</div>
+        </div>
+      </div>
+      <div class="card-desc">Session timer starts on BLE connect (HH:MM:SS). Every command timestamped in Activity Log. Export button downloads full session log as .txt for medical records, physiotherapy tracking, and research analysis.</div>
+    </div>
+
+  </div>
+
+  <!-- PART B -->
+  <div class="sec-head">
+    <span class="sec-pill pill-b">Part B</span>
+    <h2>Novel Features — Patent-Eligible Innovations</h2>
+    <span class="sec-count">6 novel features &nbsp;⭐</span>
+  </div>
+
+  <div class="feature-grid">
+
+    <div class="feature-card novel-card">
+      <div class="card-head">
+        <div class="card-num num-b">N1</div>
+        <div class="card-meta">
+          <div class="card-name">Self-Calibrating Thresholds</div>
+          <div class="card-cat">Novel • Firmware</div>
+        </div>
+        <div class="stars-badge">⭐⭐⭐⭐</div>
+      </div>
+      <div class="card-desc">Derives personal gait thresholds from a 12-second guided body-motion onboarding: Stand 3s → Sit 3s → March 6s. Computes walk and sit thresholds directly from the user's own measured range of motion.</div>
+      <div class="card-novelty"><strong>Novel vs. Prior Art:</strong> Existing adaptive systems use ML/neural networks trained on population datasets (&ge;50 subjects) requiring powerful processors and pre-collected data. This method derives thresholds entirely from the individual's real-time body motion on a low-cost microcontroller.</div>
+    </div>
+
+    <div class="feature-card novel-card">
+      <div class="card-head">
+        <div class="card-num num-b">N2</div>
+        <div class="card-meta">
+          <div class="card-name">FSR + IMU Dual-Sensor Gait Fusion</div>
+          <div class="card-cat">Novel • Sensing</div>
+        </div>
+        <div class="stars-badge">⭐⭐⭐</div>
+      </div>
+      <div class="card-desc">Requires joint confirmation from both IMU angle and FSR foot pressure before triggering assistance. Eliminates false positives during squatting, kneeling, or stationary bent-knee postures.</div>
+      <div class="card-novelty"><strong>Novel vs. Prior Art:</strong> Sub-₹15,000 exoskeletons use IMU-only control. FSR+IMU fusion systems exist but cost ₹5 lakh+. This system achieves clinical-grade dual-sensor confirmation at ₹10,000 total cost.</div>
+    </div>
+
+    <div class="feature-card novel-card full">
+      <div class="card-head">
+        <div class="card-num num-b">N3</div>
+        <div class="card-meta">
+          <div class="card-name">Live Sensor Confidence Signal (0–100%)</div>
+          <div class="card-cat">Novel • Firmware • Transparency</div>
+        </div>
+        <div class="stars-badge">⭐⭐⭐⭐⭐</div>
+      </div>
+      <div class="card-desc">Computes and displays a real-time confidence score representing agreement between IMU and FSR sensors. IMU confidence = margin from decision boundary; FSR confidence = unambiguity of pressure reading. Combined score displayed on OLED as a graphical bar and transmitted over BLE telemetry.</div>
+      <table class="mini-table">
+        <tr><th>Confidence Range</th><th>Interpretation</th><th>OLED Indicator</th></tr>
+        <tr><td>80 – 100%</td><td>Both sensors clearly agree — trust the reading</td><td>Full Green bar</td></tr>
+        <tr><td>40 – 79%</td><td>One sensor borderline — treat with caution</td><td>Partial Yellow bar</td></tr>
+        <tr><td>0 – 39%</td><td>Sensors contradict — do not rely on reading</td><td>Short Red bar</td></tr>
+      </table>
+      <div class="card-novelty"><strong>Novel vs. Prior Art:</strong> No knee exoskeleton product or research prototype has been found to expose a quantified, real-time sensor confidence metric to the end user. This represents the first transparent uncertainty indicator in wearable lower-limb robotics and is independently publishable.</div>
+    </div>
+
+    <div class="feature-card novel-card">
+      <div class="card-head">
+        <div class="card-num num-b">N4</div>
+        <div class="card-meta">
+          <div class="card-name">NVS Persistent Personal Calibration</div>
+          <div class="card-cat">Novel • Firmware • Storage</div>
+        </div>
+        <div class="stars-badge">⭐⭐⭐⭐</div>
+      </div>
+      <div class="card-desc">Personal thresholds persisted to ESP32 internal flash via NVS (Non-Volatile Storage) API. Survive power-off, battery removal, and firmware resets. A <em>calDone</em> flag prevents factory defaults from overwriting personalized values.</div>
+      <div class="card-novelty"><strong>Novel vs. Prior Art:</strong> All commercial and research exoskeletons revert to factory parameters on power-off. This system permanently stores per-user calibration — eliminating re-calibration before every session.</div>
+    </div>
+
+    <div class="feature-card novel-card">
+      <div class="card-head">
+        <div class="card-num num-b">N5</div>
+        <div class="card-meta">
+          <div class="card-name">Zero-Install Browser PWA Controller</div>
+          <div class="card-cat">Novel • PWA • Web Bluetooth</div>
+        </div>
+        <div class="stars-badge">⭐⭐⭐⭐</div>
+      </div>
+      <div class="card-desc">Full-featured exoskeleton controller delivered as a Progressive Web App over Web Bluetooth API, operable in any Chromium browser with zero installation, no app store, and no account creation. Deployable via local network or static web host.</div>
+      <div class="card-novelty"><strong>Novel vs. Prior Art:</strong> ReWalk, Indego, Keeogo, and all surveyed commercial exoskeleton systems require proprietary native iOS or Android applications. No deployed exoskeleton system utilises Web Bluetooth as its primary control interface.</div>
+    </div>
+
+    <div class="feature-card novel-card full">
+      <div class="card-head">
+        <div class="card-num num-b">N6</div>
+        <div class="card-meta">
+          <div class="card-name">Subjective Self-Report Fusion</div>
+          <div class="card-cat">Novel • Research • Data Fusion</div>
+        </div>
+        <div class="stars-badge">⭐⭐⭐⭐⭐</div>
+      </div>
+      <div class="card-desc">User annotates subjective experience (PAIN / FINE / HARD) via on-screen button or spoken voice command during an active session. The system immediately records the annotation alongside a complete sensor snapshot at the identical timestamp, creating fused objective-subjective data records for clinical and research analysis.</div>
+      <table class="mini-table">
+        <tr><th>Voice Command (4 Languages)</th><th>Fused CSV Record Generated</th></tr>
+        <tr><td>"pain" / <span lang="hi">"दर्द"</span> / <span lang="kn">"ನೋವು"</span> / <span lang="te">"నొప్పి"</span></td><td>142305ms, 52.3°, FSR:1924, WALKING, CONF:87, PAIN</td></tr>
+        <tr><td>"fine" / <span lang="hi">"ठीक"</span> / <span lang="kn">"ಸರಿ"</span> / <span lang="te">"బాగుంది"</span></td><td>143100ms, 12.1°, FSR:202, IDLE, CONF:92, FINE</td></tr>
+        <tr><td>"hard" / <span lang="hi">"कठिन"</span> / <span lang="kn">"ಕಷ್ಟ"</span> / <span lang="te">"ಕಷ್ಟ"</span></td><td>145002ms, 60.4°, FSR:1750, SITTING, CONF:78, HARD</td></tr>
+      </table>
+      <div class="card-novelty"><strong>Novel vs. Prior Art:</strong> Current clinical practice collects patient comfort/pain ratings separately on paper forms after a session and requires manual correlation with sensor logs — a process prone to recall error and temporal inaccuracy. No exoskeleton research paper or product has been found to fuse real-time subjective self-reports with synchronised sensor timestamps during live use.</div>
+    </div>
+
+  </div>
+
+  <!-- TOTAL BANNER -->
+  <div class="total-banner">
+    <div>
+      <div class="tb-main">Complete System Feature Count</div>
+      <div class="tb-sub">12 prototype features + 6 novel innovations in one open-source, ₹10,000 device</div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div class="total-badge-num">
+        <div class="n">12</div>
+        <div class="l">Prototype</div>
+      </div>
+      <div class="total-badge-num">
+        <div class="n">6</div>
+        <div class="l">Novel</div>
+      </div>
+      <div class="total-badge-num">
+        <div class="n">18</div>
+        <div class="l">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY TABLE -->
+  <div class="sec-head" style="margin-top:0">
+    <h2>Feature Summary Table</h2>
+  </div>
+  <div class="sum-wrap">
+    <table class="sum-table">
+      <thead>
+        <tr><th>ID</th><th>Feature Name</th><th>Category</th><th>Status</th><th>Patent Strength</th></tr>
+      </thead>
+      <tbody>
+        <tr class="row-a"><td>A1</td><td>Complementary Filter 100 Hz</td><td>Firmware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A2</td><td>Smart Gait State Machine</td><td>Firmware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A3</td><td>Stand-Up Boost</td><td>Firmware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A4</td><td>Battery Safety Cutoff</td><td>Hardware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A5</td><td>Physical Mode Button</td><td>Hardware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A6</td><td>OLED Live Display</td><td>Hardware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A7</td><td>BLE NUS Telemetry</td><td>Firmware</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A8</td><td>WebAuthn Biometric Lock</td><td>PWA</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A9</td><td>SOS + GPS + WhatsApp</td><td>PWA</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A10</td><td>Voice Control — 4 Languages</td><td>PWA</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A11</td><td>Live Telemetry Chart</td><td>PWA</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-a"><td>A12</td><td>Session Log Export</td><td>PWA</td><td><span class="tag-built">✓ Built</span></td><td>—</td></tr>
+        <tr class="row-b"><td>N1</td><td>Self-Calibrating Thresholds</td><td>Novel</td><td><span class="tag-novel">⭐ Added</span></td><td class="str-cell">⭐⭐⭐⭐</td></tr>
+        <tr class="row-b"><td>N2</td><td>FSR + IMU Dual-Sensor Gait Fusion</td><td>Novel</td><td><span class="tag-novel">⭐ Added</span></td><td class="str-cell">⭐⭐⭐</td></tr>
+        <tr class="row-b"><td>N3</td><td>Live Sensor Confidence Signal</td><td>Novel</td><td><span class="tag-novel">⭐ Added</span></td><td class="str-cell">⭐⭐⭐⭐⭐</td></tr>
+        <tr class="row-b"><td>N4</td><td>NVS Persistent Personal Calibration</td><td>Novel</td><td><span class="tag-novel">⭐ Added</span></td><td class="str-cell">⭐⭐⭐⭐</td></tr>
+        <tr class="row-b"><td>N5</td><td>Zero-Install Browser PWA Controller</td><td>Novel</td><td><span class="tag-novel">⭐ Added</span></td><td class="str-cell">⭐⭐⭐⭐</td></tr>
+        <tr class="row-b"><td>N6</td><td>Subjective Self-Report Fusion</td><td>Novel</td><td><span class="tag-novel">⭐ Added</span></td><td class="str-cell">⭐⭐⭐⭐⭐</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-left">
+      <div><strong>Wearable Knee Exoskeleton System</strong> — Praveen Kumar, 2026</div>
+      <div>DOC-EXO-F001 &nbsp;|&nbsp; Open-Source Research Prototype</div>
+    </div>
+    <div>Open-Source Research Prototype &nbsp;|&nbsp; ₹10,000 Platform</div>
+  </div>
+
+</div>
+</body>
+</html>

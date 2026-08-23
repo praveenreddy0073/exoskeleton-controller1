@@ -17,6 +17,7 @@ const int RED_LED_BUZZER_PIN = 19;
 const int BLUE_LED_PIN       = 25;
 const int GREEN_LED_PIN      = 26;
 const int BATTERY_PIN        = 34;
+const int FSR_PIN            = 32;  // FSR-402 Foot Pressure Sensor (Novel Feature)
 
 // --- Battery Calibration ---
 float BATTERY_CALIBRATION = 3.0;  // Confirmed by ADC: pin 2.51V × 3.0 = 7.53V
@@ -77,12 +78,39 @@ AutoState currentAutoState = STATE_IDLE;
 unsigned long sitTimer = 0;
 bool standUpBoost = false;
 
+// --- FSR Foot Pressure Sensor (Novel Feature) ---
+int  fsrRaw        = 0;
+bool footOnGround  = false;
+#define FSR_STANCE 1800   // ADC raw: foot on ground
+#define FSR_SWING  600    // ADC raw: foot lifted
+
+// --- Confidence Signal (Novel Feature) ---
+int sensorConfidence = 0;  // 0-100: how strongly IMU + FSR agree
+
+// --- Self-Calibration (Novel Feature) ---
+bool calActive          = false;
+int  calPhase           = 0;  // 0=stand, 1=sit, 2=march, 3=done
+unsigned long calTimer  = 0;
+float calStandAngle     = 0.0;
+float calSitAngle       = 0.0;
+bool  isPersonalCal     = false;
+// Calibrated thresholds (loaded from NVS or defaults)
+float calTiltUp         = 32.0;  // maps to tiltUpThreshold
+float calTiltDown       = 28.0;  // maps to tiltDownThreshold
+float calSitThresh      = 75.0;  // angle above which = sitting
+
 // --- Forward Declarations ---
 void beep(int duration);
 void updateModeLEDs();
 void sendBLEStatus();
 void handleBLECommand(String cmd);
 void updateDisplay();
+void readFSR();
+void computeConfidence();
+void startCalibration();
+void runCalibration();
+void applyCalibration();
+void loadCalibration();
 
 // =========================================================
 // BLE Callbacks
@@ -125,6 +153,7 @@ void setup() {
   preferences.begin("exo-settings", false);
   currentMode = (Mode)preferences.getInt("mode", AUTO_MODE);
   servoSpeedDelay = preferences.getInt("speed", 10);
+  loadCalibration();  // Load personal calibration thresholds (Novel Feature)
   Serial.print(F("Booting... Loaded Mode: ")); Serial.println(currentMode == AUTO_MODE ? "AUTO" : "MANUAL");
 
   // 2. Pins
@@ -132,6 +161,7 @@ void setup() {
   pinMode(RED_LED_BUZZER_PIN, OUTPUT);
   pinMode(BLUE_LED_PIN,       OUTPUT);
   pinMode(GREEN_LED_PIN,      OUTPUT);
+  pinMode(FSR_PIN, INPUT_PULLDOWN);  // Uses ESP32 internal ~45kΩ pull-down — no external resistor needed
 
   digitalWrite(RED_LED_BUZZER_PIN, LOW);
   
@@ -285,11 +315,20 @@ void loop() {
     }
   }
 
+  // Read FSR foot pressure sensor (Novel Feature)
+  readFSR();
+
+  // Run self-calibration if active (Novel Feature)
+  if (calActive) runCalibration();
+
   if (currentMode == AUTO_MODE) {
     handleAutoMode();
   } else {
     handleManualMode();
   }
+
+  // Compute confidence after sensors read (Novel Feature)
+  computeConfidence();
 
   updateServo();
   updateDisplay();
@@ -383,9 +422,9 @@ void handleBLECommand(String cmd) {
   // 1. VOICE & MODE COMMANDS
   if (cmd.startsWith("AUTO") || cmd == "A") {
     if (currentMode != AUTO_MODE) {
-      sendBLEStatus(); // Send final status before disconnect
+      sendBLEStatus();
       delay(200);
-      switchMode(); 
+      switchMode();
     }
     return;
   }
@@ -394,6 +433,44 @@ void handleBLECommand(String cmd) {
     preferences.putInt("mode", currentMode);
     Serial.println(F("VOICE: Mode -> MANUAL"));
     sendBLEStatus();
+    return;
+  }
+
+  // --- CALIBRATION COMMANDS (Novel Feature) ---
+  if (cmd == "CAL") {
+    startCalibration();
+    bleSend("CAL_STARTED");
+    return;
+  }
+  if (cmd == "CAL_CANCEL") {
+    calActive = false; calPhase = 0;
+    bleSend("CAL_CANCELLED");
+    return;
+  }
+  if (cmd == "CAL_RESET") {
+    preferences.remove("calTU");
+    preferences.remove("calTD");
+    preferences.remove("calSit");
+    preferences.putBool("calDone", false);
+    isPersonalCal = false;
+    tiltUpThreshold = calTiltUp = 32.0;
+    tiltDownThreshold = calTiltDown = 28.0;
+    calSitThresh = 75.0;
+    bleSend("CAL_RESET_OK");
+    return;
+  }
+
+  // --- SELF-REPORT FUSION (Novel Feature) ---
+  // User reports how they feel → logged as CSV with sensor snapshot
+  if (cmd.startsWith("REPORT:")) {
+    String feeling = cmd.substring(7);  // "PAIN", "FINE", or "HARD"
+    const char* stateStr = (currentAutoState == STATE_IDLE) ? "IDLE" :
+                           (currentAutoState == STATE_SITTING) ? "SITTING" : "WALKING";
+    // CSV line: time_ms, angle, FSR, state, confidence, feeling
+    Serial.printf("REPORT,%lu,%.1f,%d,%s,%d,%s\n",
+                  millis(), currentPitch, fsrRaw, stateStr, sensorConfidence, feeling.c_str());
+    bleSend(("REPORT_OK:" + feeling).c_str());
+    beep(80);
     return;
   }
 
@@ -495,7 +572,11 @@ void sendBLEStatus() {
                   ",BAT:"  + String(batteryPercent) +
                   ",VOLT:" + String(batteryVoltage, 1) +
                   ",MODE:" + mode +
-                  ",PITCH:" + String(currentPitch, 1);
+                  ",PITCH:" + String(currentPitch, 1) +
+                  ",FSR:"  + String(fsrRaw) +
+                  ",FOOT:" + String(footOnGround ? 1 : 0) +
+                  ",CONF:" + String(sensorConfidence) +
+                  ",CAL:"  + String(isPersonalCal ? 1 : 0);
 
   pTxCharacteristic->setValue(status.c_str());
   pTxCharacteristic->notify();
@@ -794,5 +875,128 @@ void updateDisplay() {
   int barWidth = map(batteryPercent, 0, 100, 0, 28);
   display.fillRect(86, 55, barWidth, 6, SSD1306_WHITE);
 
+  // Confidence bar (Novel Feature)
+  display.setCursor(0, 45);
+  display.setTextSize(1);
+  display.print("CONF:"); display.print(sensorConfidence); display.print("%");
+  display.drawRect(40, 45, 40, 6, SSD1306_WHITE);
+  display.fillRect(41, 46, map(sensorConfidence, 0, 100, 0, 38), 4, SSD1306_WHITE);
+
+  // Foot & Cal status (Novel Feature)
+  display.setCursor(85, 45);
+  display.print(footOnGround ? "GND" : "AIR");
+  if (isPersonalCal) { display.setCursor(108, 45); display.print("C*"); }
+
   display.display();
+}
+
+// =========================================================
+// NOVEL FEATURE: FSR FOOT PRESSURE READER
+// =========================================================
+void readFSR() {
+  fsrRaw = analogRead(FSR_PIN);
+  if      (fsrRaw > FSR_STANCE) footOnGround = true;
+  else if (fsrRaw < FSR_SWING)  footOnGround = false;
+}
+
+// =========================================================
+// NOVEL FEATURE: CONFIDENCE SIGNAL
+// IMU + FSR agreement score (0-100%)
+// =========================================================
+void computeConfidence() {
+  // IMU confidence: how far angle is from the decision boundary
+  float margin  = abs(currentPitch - tiltUpThreshold);
+  float imuConf = (margin > 10.0f) ? 100.0f : (margin / 10.0f) * 100.0f;
+
+  // FSR confidence: how unambiguous the foot reading is
+  float fsrMid  = (FSR_STANCE + FSR_SWING) / 2.0f;
+  float fsrConf = constrain(abs(fsrRaw - fsrMid) / fsrMid * 100.0f, 0.0f, 100.0f);
+
+  sensorConfidence = (int)((imuConf + fsrConf) / 2.0f);
+}
+
+// =========================================================
+// NOVEL FEATURE: SELF-CALIBRATION
+// Phase 0: Stand straight (3s) → Phase 1: Sit down (3s) → Phase 2: March (6s)
+// =========================================================
+void bleSend(const char* msg) {
+  if (!bleConnected || pTxCharacteristic == nullptr) return;
+  pTxCharacteristic->setValue(msg);
+  pTxCharacteristic->notify();
+}
+
+void startCalibration() {
+  calActive = true; calPhase = 0;
+  calTimer  = millis();
+  calStandAngle = calSitAngle = 0.0;
+  beep(300);
+  Serial.println("CAL: Phase 0 - Stand Straight");
+}
+
+void runCalibration() {
+  unsigned long elapsed = millis() - calTimer;
+  float absAngle = abs(currentPitch);
+
+  switch (calPhase) {
+    case 0: // STAND
+      calStandAngle = absAngle;
+      if (elapsed > 3000) {
+        beep(200);
+        calPhase = 1; calTimer = millis();
+        bleSend("CAL_PHASE_SIT");
+        Serial.printf("CAL: Stand=%.1f. Now SIT.\n", calStandAngle);
+      }
+      break;
+    case 1: // SIT
+      calSitAngle = absAngle;
+      if (elapsed > 3000) {
+        beep(200);
+        calPhase = 2; calTimer = millis();
+        bleSend("CAL_PHASE_MARCH");
+        Serial.printf("CAL: Sit=%.1f. Now MARCH.\n", calSitAngle);
+      }
+      break;
+    case 2: // MARCH (capture range)
+      if (elapsed > 6000) {
+        beep(400); delay(100); beep(400);
+        applyCalibration();
+        calActive = false; calPhase = 3;
+      }
+      break;
+  }
+}
+
+void applyCalibration() {
+  float range = calSitAngle - calStandAngle;
+  if (range < 10.0f) {
+    bleSend("CAL_WARN_RANGE");
+    Serial.println("CAL WARN: Range too small, keeping defaults.");
+    return;
+  }
+  // Derive personal thresholds from measured stand/sit angles
+  tiltUpThreshold   = calStandAngle + range * 0.40f;  // 40% into range = walking
+  tiltDownThreshold = tiltUpThreshold - 4.0f;
+  calSitThresh      = calStandAngle + range * 0.80f;  // 80% into range = sitting
+
+  // Save to NVS
+  preferences.putFloat("calTU",  tiltUpThreshold);
+  preferences.putFloat("calTD",  tiltDownThreshold);
+  preferences.putFloat("calSit", calSitThresh);
+  preferences.putBool("calDone", true);
+  isPersonalCal = true;
+
+  Serial.printf("CAL DONE: TiltUp=%.1f TiltDown=%.1f Sit=%.1f\n",
+                tiltUpThreshold, tiltDownThreshold, calSitThresh);
+  bleSend("CAL_COMPLETE");
+}
+
+void loadCalibration() {
+  isPersonalCal = preferences.getBool("calDone", false);
+  if (isPersonalCal) {
+    tiltUpThreshold   = preferences.getFloat("calTU",  32.0f);
+    tiltDownThreshold = preferences.getFloat("calTD",  28.0f);
+    calSitThresh      = preferences.getFloat("calSit", 75.0f);
+    Serial.printf("CAL Loaded: TiltUp=%.1f TiltDown=%.1f Sit=%.1f\n",
+                  tiltUpThreshold, tiltDownThreshold, calSitThresh);
+  }
 }
